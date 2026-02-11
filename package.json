@@ -1,0 +1,77 @@
+{
+  "name": "impyla",
+  "displayName": "impyla",
+  "description": "VSCode extension to execute Impala SQL queries with Jinja2 support.",
+  "version": "0.1.0",
+  "publisher": "oboki",
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Data Science"
+  ],
+  "activationEvents": [
+    "onLanguage:sql"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "impyla.executeQuery",
+        "title": "Impyla: Execute Query (Selection or Entire Document)"
+      },
+      {
+        "command": "impyla.createConfig",
+        "title": "Impyla: Create Configuration"
+      },
+      {
+        "command": "impyla.showOutput",
+        "title": "Impyla: Show Output"
+      }
+    ],
+    "configuration": {
+      "title": "Impyla",
+      "properties": {
+        "impyla.maxRows": {
+          "type": "number",
+          "default": 10000,
+          "description": "Maximum rows to fetch from query results"
+        },
+        "impyla.autoPreview": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically preview Jinja templates on file open"
+        },
+        "impyla.pythonPath": {
+          "type": "string",
+          "default": "python3",
+          "description": "Path to Python executable"
+        }
+      }
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oboki/vscode-impyla"
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "16.x",
+    "@types/vscode": "^1.80.0",
+    "@typescript-eslint/eslint-plugin": "^6.4.1",
+    "@typescript-eslint/parser": "^6.4.1",
+    "eslint": "^8.47.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "highlight.js": "^11.9.0",
+    "js-yaml": "^4.1.0"
+  }
+}

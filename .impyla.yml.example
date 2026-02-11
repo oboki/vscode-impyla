@@ -1,0 +1,56 @@
+# Example Impyla Configuration File
+# Copy this file to .impyla.yml and customize for your environment
+
+connection:
+  # Impala server hostname
+  host: localhost
+  
+  # Impala server port (default: 21050)
+  port: 21050
+  
+  # Default database to use
+  database: default
+  
+  # Authentication mechanism: NOSASL, PLAIN, LDAP, or KERBEROS
+  auth_mechanism: NOSASL
+  
+  # Username (required for PLAIN/LDAP auth)
+  # You can use environment variables: ${IMPALA_USER}
+  # user: myusername
+  
+  # Password (required for PLAIN/LDAP auth)
+  # You can use environment variables: ${IMPALA_PASSWORD}
+  # password: mypassword
+  
+  # Query timeout in seconds (default: 300)
+  timeout: 300
+  
+  # Use SSL for connection (default: false)
+  use_ssl: false
+  
+  # Path to CA certificate for SSL (optional)
+  # ca_cert: /path/to/ca-cert.pem
+
+# Jinja2 template configuration
+jinja:
+  # Paths to custom Python macro files or directories
+  # Paths can be relative to workspace root or absolute
+  plugin_paths:
+    # - macros/my_macros.py
+    # - macros/
+  
+  # Global variables available in all templates
+  variables:
+    # environment: production
+    # date_format: "%Y-%m-%d"
+
+# Extension settings
+extension:
+  # Maximum number of rows to fetch (default: 10000)
+  max_rows: 10000
+  
+  # Path to Python executable (default: python3)
+  # python_path: python3
+  
+  # Auto-preview Jinja templates (default: true)
+  auto_preview: true
