@@ -1,0 +1,63 @@
+{
+  "name": "impyla",
+  "displayName": "impyla",
+  "description": "VSCode extension to execute Impala SQL queries with Jinja2 support.",
+  "version": "0.0.1",
+  "publisher": "oboki",  "icon": "icon.png",  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onCommand:vscode-impyla.executeQuery"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "vscode-impyla.executeQuery",
+        "title": "Impyla: Execute Query"
+      }
+    ],
+    "configuration": {
+      "title": "Impyla",
+      "properties": {
+        "impyla.pythonPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to Python interpreter for Impyla extension. Leave empty to auto-detect."
+        }
+      }
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oboki/vscode-impyla"
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "bundle": "npm run compile && webpack --mode production",
+    "package": "npm run bundle && vsce package"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "16.x",
+    "@types/vscode": "^1.80.0",
+    "@typescript-eslint/eslint-plugin": "^6.4.1",
+    "@typescript-eslint/parser": "^6.4.1",
+    "@vscode/vsce": "^3.7.1",
+    "eslint": "^8.47.0",
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.3.3",
+    "vsce": "^2.15.0",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4"
+  }
+}

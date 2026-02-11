@@ -1,0 +1,15 @@
+connection:
+  host: localhost
+  port: 21050
+  database: localhost
+  auth_mechanism: PLAIN
+  user: null
+  password: null
+  timeout: 300
+  use_ssl: false
+jinja:
+  plugin_paths: null
+  variables: null
+extension:
+  max_rows: 10000
+  python_path: python3
