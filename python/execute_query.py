@@ -6,7 +6,37 @@ Execute Impala queries using the impyla library
 import json
 import sys
 import time
+import math
+from datetime import date, datetime, time as datetime_time
+from decimal import Decimal
 from typing import Dict, Any
+
+
+def to_json_safe(value: Any) -> Any:
+    """Convert query values to JSON-safe primitives."""
+    if value is None or isinstance(value, (str, int, bool)):
+        return value
+
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+
+    if isinstance(value, Decimal):
+        number = float(value)
+        return number if math.isfinite(number) else None
+
+    if isinstance(value, (datetime, date, datetime_time)):
+        return value.isoformat()
+
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+
+    if isinstance(value, dict):
+        return {str(key): to_json_safe(item) for key, item in value.items()}
+
+    if isinstance(value, (list, tuple, set)):
+        return [to_json_safe(item) for item in value]
+
+    return str(value)
 
 
 def execute_query(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -66,7 +96,7 @@ def execute_query(config: Dict[str, Any]) -> Dict[str, Any]:
 
         if cursor.description:  # Query returns results
             for row in cursor.fetchmany(max_rows):
-                rows.append(list(row))
+                rows.append([to_json_safe(cell) for cell in row])
                 row_count += 1
 
                 if row_count >= max_rows:
@@ -134,7 +164,7 @@ def main():
         result = execute_query(config)
 
         # Write result to stdout
-        print(json.dumps(result))
+        print(json.dumps(result, ensure_ascii=False))
         sys.exit(0)
 
     except json.JSONDecodeError as e:
@@ -143,7 +173,7 @@ def main():
             "error": f"Invalid JSON input: {str(e)}",
             "error_type": "ImpalaError",
         }
-        print(json.dumps(error_result))
+        print(json.dumps(error_result, ensure_ascii=False))
         sys.exit(1)
 
     except Exception as e:
@@ -152,7 +182,7 @@ def main():
             "error": f"Unexpected error: {str(e)}",
             "error_type": "ImpalaError",
         }
-        print(json.dumps(error_result))
+        print(json.dumps(error_result, ensure_ascii=False))
         sys.exit(1)
 
 
