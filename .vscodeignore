@@ -1,0 +1,33 @@
+# Build and source
+src/**
+**/*.ts
+**/*.map
+
+# Development and editor artifacts
+.vscode/**
+.git/**
+.gitignore
+tsconfig.json
+QUICKSTART.md
+node_modules/.cache/**
+
+# Keep only runtime dependencies from node_modules
+node_modules/**
+!node_modules/js-yaml/**
+!node_modules/argparse/**
+!node_modules/highlight.js/lib/core.js
+!node_modules/highlight.js/lib/languages/sql.js
+!node_modules/highlight.js/styles/vs2015.min.css
+
+# Docs not needed in VSIX runtime
+DEVELOPMENT.md
+IMPLEMENTATION.md
+TESTING.md
+
+# Local/dev files
+.impyla.yml
+examples/**
+*.vsix
+
+# Stale/unused build output
+out/providers/**
