@@ -52,6 +52,7 @@
     "url": "https://github.com/oboki/vscode-impyla"
   },
   "scripts": {
+    "clean": "node scripts/clean.js",
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./"
