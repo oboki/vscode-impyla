@@ -34,7 +34,7 @@ export class ResultsPanel {
 
     // If we already have a panel, show it
     if (ResultsPanel.currentPanel) {
-      ResultsPanel.currentPanel.panel.reveal(column);
+      ResultsPanel.currentPanel.panel.reveal(column, true);
       return ResultsPanel.currentPanel;
     }
 
@@ -42,7 +42,10 @@ export class ResultsPanel {
     const panel = vscode.window.createWebviewPanel(
       "impylaResults",
       "Impyla Query Results",
-      column,
+      {
+        viewColumn: column,
+        preserveFocus: true,
+      },
       {
         enableScripts: true,
         localResourceRoots: [
