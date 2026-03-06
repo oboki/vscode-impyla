@@ -39,11 +39,6 @@
           "default": 10000,
           "description": "Maximum rows to fetch from query results"
         },
-        "impyla.autoPreview": {
-          "type": "boolean",
-          "default": true,
-          "description": "Automatically preview Jinja templates on file open"
-        },
         "impyla.pythonPath": {
           "type": "string",
           "default": "python3",

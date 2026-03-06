@@ -94,8 +94,7 @@ SELECT * FROM my_table LIMIT 10;
 
 ### 3. Execute Query
 
-- Click the **▶ Execute Query** button at the top of the file
-- Or use Command Palette: **Impyla: Execute Query**
+- Use Command Palette: **Impyla: Execute Query (Selection or Entire Document)**
 - Results will appear in the "Impyla Query Results" panel
 
 ### 4. Test Jinja Templates
@@ -115,8 +114,8 @@ jinja:
     limit: 50
 ```
 
-- Click **👁 Preview Template** to see rendered SQL
-- Click **▶ Execute Query** to execute
+- Run **Impyla: Execute Query (Selection or Entire Document)** from Command Palette
+- Confirm rendered SQL in the results panel
 
 ## Project Structure
 
@@ -128,14 +127,13 @@ vscode-impyla/
 │   ├── services/           # Business logic services
 │   ├── commands/           # Command implementations
 │   ├── panels/             # Webview panels
-│   └── providers/          # CodeLens providers
+│   └── providers/          # (currently unused)
 ├── python/                 # Python scripts
 │   ├── execute_query.py    # Query execution
 │   ├── render_jinja.py     # Template rendering
 │   └── requirements.txt    # Python dependencies
 ├── media/                  # Webview assets
-│   ├── results.css         # Results panel styles
-│   └── preview.css         # Preview panel styles
+│   └── webview.css         # Results panel styles
 ├── examples/               # Example files
 │   ├── simple_query.sql
 │   ├── template_query.sql
@@ -197,7 +195,7 @@ View in Extension Output channel.
 
 ### Webview Debugging
 
-1. In results/preview panel, right-click > **Inspect**
+1. In results panel, right-click > **Inspect**
 2. DevTools will open for the webview
 3. Debug HTML/CSS issues
 

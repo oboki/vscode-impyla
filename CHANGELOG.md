@@ -8,6 +8,9 @@ All notable changes to the "Impyla" extension will be documented in this file.
 
 - Execution UX simplified to Command Palette only.
 - Removed SQL CodeLens execution entry points.
+- Query results panel now preserves editor focus after execution.
+- Query result serialization hardened for non-integer numeric values.
+- Removed unused `impyla.autoPreview` setting from extension manifest.
 - Updated docs and testing checklist to reflect Command Palette-based execution.
 
 ## [1.0.0] - 2026-02-13

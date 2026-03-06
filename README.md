@@ -7,7 +7,7 @@ Execute Impala queries directly from VS Code with Jinja2 templating support.
 - 🚀 Execute Impala SQL queries from `.sql` files
 - 📝 Jinja2 template support with custom Python macros
 - 📊 View query results in an integrated panel
-- 🔍 Preview template rendering before execution
+- 🔍 Inspect rendered SQL in query results for templated queries
 - ⚙️ Configuration via `.impyla.yml`
 - 🔐 Support for multiple authentication mechanisms
 
