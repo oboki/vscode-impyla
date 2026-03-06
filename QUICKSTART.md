@@ -18,7 +18,7 @@ Then press `F5` in VS Code to launch Extension Development Host.
 
 ```bash
 vsce package
-code --install-extension impyla-1.0.0.vsix
+code --install-extension impyla-0.1.1.vsix
 ```
 
 ## Step 2: Install Python Dependencies

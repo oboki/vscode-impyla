@@ -4,6 +4,8 @@ All notable changes to the "Impyla" extension will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-03-06
+
 ### Changed
 
 - Execution UX simplified to Command Palette only.
@@ -13,7 +15,7 @@ All notable changes to the "Impyla" extension will be documented in this file.
 - Removed unused `impyla.autoPreview` setting from extension manifest.
 - Updated docs and testing checklist to reflect Command Palette-based execution.
 
-## [1.0.0] - 2026-02-13
+## [0.1.0] - 2026-02-13
 
 ### Initial Release
 

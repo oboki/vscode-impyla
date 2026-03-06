@@ -54,7 +54,7 @@ npm install -g @vscode/vsce
 vsce package
 
 # Install the .vsix file
-code --install-extension impyla-1.0.0.vsix
+code --install-extension impyla-0.1.1.vsix
 ```
 
 ## Testing the Extension

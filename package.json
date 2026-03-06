@@ -2,7 +2,7 @@
   "name": "impyla",
   "displayName": "impyla",
   "description": "VSCode extension to execute Impala SQL queries with Jinja2 support.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "oboki",
   "icon": "icon.png",
   "engines": {
