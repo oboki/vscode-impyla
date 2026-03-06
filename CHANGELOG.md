@@ -2,6 +2,14 @@
 
 All notable changes to the "Impyla" extension will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- Execution UX simplified to Command Palette only.
+- Removed SQL CodeLens execution entry points.
+- Updated docs and testing checklist to reflect Command Palette-based execution.
+
 ## [1.0.0] - 2026-02-13
 
 ### Initial Release

@@ -70,8 +70,9 @@ LIMIT 10;
 ## Step 5: Execute!
 
 1. Open `test.sql`
-2. Click **▶ Execute Query** button (appears at top of file)
-3. View results in the "Impyla Query Results" panel
+2. Open Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
+3. Run: **Impyla: Execute Query (Selection or Entire Document)**
+4. View results in the "Impyla Query Results" panel
 
 ## Advanced: Using Templates
 
@@ -98,13 +99,9 @@ WHERE status = '{{ status }}'
 LIMIT {{ limit }};
 ```
 
-### 3. Preview Template
+### 3. Execute Template
 
-Click **👁 Preview Template** to see rendered SQL.
-
-### 4. Execute Template
-
-Click **▶ Execute Query** to run the rendered query.
+Run **Impyla: Execute Query (Selection or Entire Document)** from Command Palette.
 
 ## Troubleshooting
 
@@ -137,31 +134,12 @@ Run command: **Impyla: Show Output**
 - Read [DEVELOPMENT.md](DEVELOPMENT.md) for development guide
 - Explore custom macros in [examples/macros/](examples/macros/)
 
-## Keyboard Shortcuts (Optional)
-
-Add to your `keybindings.json`:
-
-```json
-[
-  {
-    "key": "cmd+shift+e",
-    "command": "impyla.executeQuery",
-    "when": "editorLangId == sql"
-  },
-  {
-    "key": "cmd+shift+r",
-    "command": "impyla.executeSelected",
-    "when": "editorLangId == sql && editorHasSelection"
-  }
-]
-```
-
 ## Tips
 
 1. **Environment Variables**: Use `${VAR_NAME}` in config for sensitive data
 2. **Cancel Queries**: Click the cancel button in the progress notification
 3. **Multiple Queries**: Select specific SQL text to execute just that portion
-4. **Template Preview**: Always preview complex templates before executing
+4. **Template Validation**: Verify variables/macros in `.impyla.yml` before execution
 5. **Custom Macros**: Create reusable Python functions in plugin files
 
 ## Example Workflow
@@ -187,7 +165,7 @@ EOF
 # 4. Open in VS Code
 code .
 
-# 5. Execute query (click button in editor)
+# 5. Execute query (Command Palette)
 ```
 
 Happy querying! 🚀

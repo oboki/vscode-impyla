@@ -3,7 +3,6 @@ import { ConfigService } from "./services/configService";
 import { PythonEnvironmentService } from "./services/pythonEnvironmentService";
 import { JinjaService } from "./services/jinjaService";
 import { ImpalaService } from "./services/impalaService";
-import { SqlCodeLensProvider } from "./providers/codeLensProvider";
 import { executeQueryCommand } from "./commands/executeQuery";
 import { createConfigCommand } from "./commands/createConfig";
 
@@ -12,7 +11,6 @@ let configService: ConfigService;
 let pythonService: PythonEnvironmentService;
 let jinjaService: JinjaService;
 let impalaService: ImpalaService;
-let codeLensProvider: SqlCodeLensProvider;
 let configPromptShown = false;
 
 /**
@@ -122,21 +120,6 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
   );
 
-  // Register CodeLens provider
-  codeLensProvider = new SqlCodeLensProvider(jinjaService);
-  context.subscriptions.push(
-    vscode.languages.registerCodeLensProvider(
-      { language: "sql", scheme: "file" },
-      codeLensProvider,
-    ),
-  );
-  context.subscriptions.push(
-    vscode.languages.registerCodeLensProvider(
-      { language: "sql", scheme: "untitled" },
-      codeLensProvider,
-    ),
-  );
-
   // Setup event listeners
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor((editor) => {
@@ -144,15 +127,7 @@ export async function activate(context: vscode.ExtensionContext) {
         outputChannel.appendLine(
           `Opened SQL file: ${editor.document.fileName}`,
         );
-        codeLensProvider.refresh();
       }
-    }),
-  );
-
-  context.subscriptions.push(
-    vscode.window.onDidChangeTextEditorSelection(() => {
-      // Refresh CodeLens when selection changes
-      codeLensProvider.refresh();
     }),
   );
 

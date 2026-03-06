@@ -10,7 +10,6 @@ Execute Impala queries directly from VS Code with Jinja2 templating support.
 - 🔍 Preview template rendering before execution
 - ⚙️ Configuration via `.impyla.yml`
 - 🔐 Support for multiple authentication mechanisms
-- 💡 CodeLens integration for quick query execution
 
 ## Requirements
 
@@ -58,9 +57,8 @@ LIMIT 10;
 
 ### 4. Execute Queries
 
-- Click the **▶ Execute Query** button in the editor
-- Use command palette: **Impyla: Execute Query**
-- Use keyboard shortcut (configurable)
+- Open Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
+- Run: **Impyla: Execute Query (Selection or Entire Document)**
 
 ## Jinja2 Templates
 
@@ -121,9 +119,7 @@ WHERE event_date >= '{{ days_ago(7) }}'
 
 ## Commands
 
-- **Impyla: Execute Query** - Execute entire SQL file
-- **Impyla: Execute Selected** - Execute selected SQL
-- **Impyla: Preview Template** - Preview Jinja rendering
+- **Impyla: Execute Query (Selection or Entire Document)** - Execute selected SQL if present, otherwise execute the full SQL document
 - **Impyla: Create Configuration** - Setup wizard for `.impyla.yml`
 - **Impyla: Show Output** - Show extension output channel
 
@@ -166,7 +162,6 @@ Supported mechanisms:
 ## Extension Settings
 
 - `impyla.maxRows` - Maximum rows to fetch (default: 10000)
-- `impyla.autoPreview` - Auto-preview templates (default: true)
 - `impyla.pythonPath` - Python executable path (default: python3)
 
 ## Troubleshooting

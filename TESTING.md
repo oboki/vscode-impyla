@@ -75,8 +75,8 @@ Use this checklist to verify all extension functionality works correctly.
 
 ### Simple Query
 - [ ] Create `test.sql` with simple SELECT
-- [ ] CodeLens "▶ Execute Query" appears
-- [ ] Click execute button
+- [ ] Open Command Palette
+- [ ] Run command "Impyla: Execute Query (Selection or Entire Document)"
 - [ ] Progress notification appears
 - [ ] Results panel opens
 - [ ] Results displayed in table
@@ -86,8 +86,8 @@ Use this checklist to verify all extension functionality works correctly.
 
 ### Execute Selected
 - [ ] Select portion of SQL
-- [ ] CodeLens "▶ Execute Selected" appears
-- [ ] Click button
+- [ ] Open Command Palette
+- [ ] Run command "Impyla: Execute Query (Selection or Entire Document)"
 - [ ] Only selected SQL executes
 - [ ] Results displayed correctly
 
@@ -121,31 +121,30 @@ Use this checklist to verify all extension functionality works correctly.
 
 ### Jinja Detection
 - [ ] Create SQL with `{{ variable }}`
-- [ ] CodeLens "👁 Preview Template" appears
 - [ ] Jinja syntax detected in output channel
 
-### Preview Template
-- [ ] Click "👁 Preview Template"
-- [ ] Preview panel opens
-- [ ] Rendered SQL displayed
+### Template Execution
+- [ ] Open Command Palette
+- [ ] Run command "Impyla: Execute Query (Selection or Entire Document)"
+- [ ] Query executes with rendered SQL
 - [ ] No errors
 
 ### Variable Substitution
 - [ ] Add variables to config jinja.variables
 - [ ] Use variables in SQL template
-- [ ] Preview shows substituted values
+- [ ] Executed query uses substituted values
 - [ ] Execute runs substituted query
 - [ ] "Rendered SQL" section appears in results
 
 ### Template Errors
 - [ ] Use undefined variable
-- [ ] Error shown in preview panel
+- [ ] Error shown in results panel
 - [ ] Error type: UndefinedError
 - [ ] Error message clear
 
 ### Syntax Errors
 - [ ] Create template with syntax error (e.g., `{% if %}`)
-- [ ] Preview shows error
+- [ ] Execute command shows error in results panel
 - [ ] Line number displayed
 - [ ] Error type: TemplateSyntaxError
 
@@ -155,12 +154,12 @@ Use this checklist to verify all extension functionality works correctly.
 - [ ] Create Python file with functions
 - [ ] Add to jinja.plugin_paths
 - [ ] Functions available in templates
-- [ ] Loaded plugins listed in preview panel
+- [ ] Query execution succeeds using plugin functions
 
 ### Macro Usage
 - [ ] Use example date_utils.py
 - [ ] Call `days_ago(7)` in template
-- [ ] Preview shows correct date
+- [ ] Execute query shows correct rendered date behavior
 - [ ] Execute works correctly
 
 ### Plugin Errors
@@ -186,13 +185,6 @@ Use this checklist to verify all extension functionality works correctly.
 - [ ] Hover highlighting
 - [ ] Horizontal scroll for wide tables
 
-### Preview Panel
-- [ ] Panel title: "Jinja Template Preview"
-- [ ] Opens beside editor
-- [ ] Pre-formatted SQL display
-- [ ] Loaded plugins section
-- [ ] Syntax highlighting (via CSS)
-
 ### Theme Integration
 - [ ] Switch to light theme
 - [ ] Colors update correctly
@@ -213,12 +205,6 @@ Use this checklist to verify all extension functionality works correctly.
 - [ ] Only 5 rows returned
 - [ ] has_more flag set
 
-### autoPreview Setting
-- [ ] Set `impyla.autoPreview` to false
-- [ ] Open template file
-- [ ] Preview not automatic
-- [ ] Manual preview still works
-
 ### pythonPath Setting
 - [ ] Set custom python path
 - [ ] Extension uses custom path
@@ -234,13 +220,11 @@ Use this checklist to verify all extension functionality works correctly.
 ### Template Query Example
 - [ ] Open examples/template_query.sql
 - [ ] Configure variables in examples/.impyla.yml
-- [ ] Preview renders correctly
 - [ ] Execute successfully
 
 ### Advanced Template Example
 - [ ] Open examples/advanced_template.sql
 - [ ] Load macros from examples/macros/
-- [ ] Preview shows macro expansion
 - [ ] Execute successfully
 
 ## Edge Cases
