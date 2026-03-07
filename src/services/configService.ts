@@ -2,7 +2,10 @@ import * as vscode from "vscode";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import * as path from "path";
+import * as os from "os";
 import { ImpylaConfig } from "../types";
+
+export const GLOBAL_PASSWORD_POINTER = "secret://global";
 
 /**
  * Service for managing .impyla.yml configuration files
@@ -10,7 +13,7 @@ import { ImpylaConfig } from "../types";
 export class ConfigService {
   private config: ImpylaConfig | null = null;
   private configPath: string | null = null;
-  private fileWatcher: vscode.FileSystemWatcher | null = null;
+  private fileWatchers: vscode.FileSystemWatcher[] = [];
 
   constructor(private outputChannel: vscode.OutputChannel) {}
 
@@ -18,60 +21,36 @@ export class ConfigService {
    * Load configuration from workspace root
    */
   async loadConfig(): Promise<ImpylaConfig | null> {
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders || workspaceFolders.length === 0) {
-      this.outputChannel.appendLine("No workspace folder found");
+    const candidatePaths = this.getCandidateConfigPaths();
+    this.setupFileWatchers(candidatePaths);
+
+    const selectedPath = candidatePaths.find((candidatePath) =>
+      fs.existsSync(candidatePath),
+    );
+
+    if (!selectedPath) {
+      this.outputChannel.appendLine(
+        `Configuration file not found. Checked paths: ${candidatePaths.join(", ")}`,
+      );
       this.config = null;
       this.configPath = null;
       return null;
     }
 
-    const workspaceRoot = workspaceFolders[0].uri.fsPath;
-    const newConfigPath = path.join(workspaceRoot, ".impyla.yml");
-
-    // If workspace changed, clear old config
-    if (this.configPath && this.configPath !== newConfigPath) {
-      this.outputChannel.appendLine(
-        `Workspace changed from ${this.configPath} to ${newConfigPath}`,
-      );
-      this.config = null;
-      if (this.fileWatcher) {
-        this.fileWatcher.dispose();
-        this.fileWatcher = null;
-      }
-    }
-
-    this.configPath = newConfigPath;
+    this.configPath = selectedPath;
 
     this.outputChannel.appendLine(
-      `Looking for configuration at: ${this.configPath}`,
+      `Loading configuration from: ${this.configPath}`,
     );
-    this.outputChannel.appendLine(`Workspace root: ${workspaceRoot}`);
-    this.outputChannel.appendLine(
-      `File exists: ${fs.existsSync(this.configPath)}`,
-    );
-
-    // Always set up file watcher to detect when file is created
-    this.setupFileWatcher();
-
-    if (!fs.existsSync(this.configPath)) {
-      this.outputChannel.appendLine(
-        `Configuration file not found: ${this.configPath}`,
-      );
-      this.config = null;
-      return null;
-    }
 
     try {
       const fileContent = fs.readFileSync(this.configPath, "utf8");
-      const parsedConfig = yaml.load(fileContent) as any;
-
-      // Substitute environment variables
-      const processedConfig = this.substituteEnvVars(parsedConfig);
+      const processedConfig = yaml.load(fileContent) as any;
 
       // Validate required fields
       if (!this.validateConfig(processedConfig)) {
         vscode.window.showErrorMessage("Invalid .impyla.yml configuration");
+        this.config = null;
         return null;
       }
 
@@ -110,29 +89,31 @@ export class ConfigService {
   }
 
   /**
-   * Substitute environment variables in configuration
+   * Get candidate config paths by priority
    */
-  private substituteEnvVars(obj: any): any {
-    if (typeof obj === "string") {
-      return obj.replace(/\$\{([^}]+)\}/g, (match, varName) => {
-        return process.env[varName] || match;
-      });
-    } else if (Array.isArray(obj)) {
-      return obj.map((item) => this.substituteEnvVars(item));
-    } else if (obj !== null && typeof obj === "object") {
-      const result: any = {};
-      for (const key in obj) {
-        result[key] = this.substituteEnvVars(obj[key]);
-      }
-      return result;
+  private getCandidateConfigPaths(): string[] {
+    const candidatePaths: string[] = [];
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+
+    if (workspaceFolders && workspaceFolders.length > 0) {
+      const workspaceRoot = workspaceFolders[0].uri.fsPath;
+      candidatePaths.push(path.join(workspaceRoot, ".impyla.yml"));
     }
-    return obj;
+
+    candidatePaths.push(path.join(os.homedir(), ".impyla.yml"));
+
+    return candidatePaths;
   }
 
   /**
    * Validate configuration structure
    */
   private validateConfig(config: any): boolean {
+    if (!config || typeof config !== "object") {
+      this.outputChannel.appendLine("Invalid configuration: root must be an object");
+      return false;
+    }
+
     if (!config.connection) {
       this.outputChannel.appendLine("Missing required field: connection");
       return false;
@@ -151,6 +132,40 @@ export class ConfigService {
     config.connection.timeout = conn.timeout || 300;
     config.connection.use_ssl = conn.use_ssl || false;
 
+    if (typeof conn.password === "string" && /\$\{[^}]+\}/.test(conn.password)) {
+      this.outputChannel.appendLine(
+        "Environment variable expansion is no longer supported for connection.password",
+      );
+      return false;
+    }
+
+    if (
+      typeof conn.password === "string" &&
+      conn.password.startsWith("secret://") &&
+      conn.password !== GLOBAL_PASSWORD_POINTER
+    ) {
+      this.outputChannel.appendLine(
+        `Unsupported password pointer: ${conn.password}. Use ${GLOBAL_PASSWORD_POINTER}`,
+      );
+      return false;
+    }
+
+    if (conn.auth_mechanism === "PLAIN" || conn.auth_mechanism === "LDAP") {
+      if (!conn.user) {
+        this.outputChannel.appendLine(
+          "Missing required field for auth: connection.user",
+        );
+        return false;
+      }
+
+      if (!conn.password) {
+        this.outputChannel.appendLine(
+          "Missing required field for auth: connection.password",
+        );
+        return false;
+      }
+    }
+
     config.jinja = config.jinja || {};
     config.jinja.plugin_paths = config.jinja.plugin_paths || [];
     config.jinja.variables = config.jinja.variables || {};
@@ -167,43 +182,41 @@ export class ConfigService {
   }
 
   /**
-   * Set up file watcher for auto-reload
+   * Set up file watchers for auto-reload
    */
-  private setupFileWatcher() {
-    if (this.fileWatcher) {
-      this.fileWatcher.dispose();
-    }
+  private setupFileWatchers(configPaths: string[]) {
+    this.fileWatchers.forEach((watcher) => watcher.dispose());
+    this.fileWatchers = [];
 
-    if (!this.configPath) {
-      return;
-    }
+    configPaths.forEach((configPath) => {
+      const pattern = new vscode.RelativePattern(
+        vscode.Uri.file(path.dirname(configPath)),
+        path.basename(configPath),
+      );
+      const watcher = vscode.workspace.createFileSystemWatcher(pattern);
 
-    // Watch for .impyla.yml in the workspace root
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (!workspaceFolders || workspaceFolders.length === 0) {
-      return;
-    }
+      watcher.onDidChange(() => {
+        this.outputChannel.appendLine(
+          `Configuration file changed (${configPath}), reloading...`,
+        );
+        void this.loadConfig();
+      });
 
-    const pattern = new vscode.RelativePattern(
-      workspaceFolders[0],
-      ".impyla.yml",
-    );
-    this.fileWatcher = vscode.workspace.createFileSystemWatcher(pattern);
+      watcher.onDidDelete(() => {
+        this.outputChannel.appendLine(
+          `Configuration file deleted (${configPath}), re-evaluating config source...`,
+        );
+        void this.loadConfig();
+      });
 
-    this.fileWatcher.onDidChange(() => {
-      this.outputChannel.appendLine("Configuration file changed, reloading...");
-      this.loadConfig();
-    });
+      watcher.onDidCreate(() => {
+        this.outputChannel.appendLine(
+          `Configuration file created (${configPath}), reloading...`,
+        );
+        void this.loadConfig();
+      });
 
-    this.fileWatcher.onDidDelete(() => {
-      this.outputChannel.appendLine("Configuration file deleted");
-      this.config = null;
-      this.configPath = null;
-    });
-
-    this.fileWatcher.onDidCreate(() => {
-      this.outputChannel.appendLine("Configuration file created, loading...");
-      this.loadConfig();
+      this.fileWatchers.push(watcher);
     });
   }
 
@@ -211,8 +224,7 @@ export class ConfigService {
    * Dispose resources
    */
   dispose() {
-    if (this.fileWatcher) {
-      this.fileWatcher.dispose();
-    }
+    this.fileWatchers.forEach((watcher) => watcher.dispose());
+    this.fileWatchers = [];
   }
 }

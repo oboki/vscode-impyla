@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
+import { GLOBAL_PASSWORD_POINTER } from "../services/configService";
 
 /**
  * Command to create .impyla.yml configuration file
@@ -79,20 +80,46 @@ export async function createConfigCommand(
 
   if (authMechanism === "PLAIN" || authMechanism === "LDAP") {
     user = await vscode.window.showInputBox({
-      prompt: "Enter username (or use ${ENV_VAR} syntax)",
-      placeHolder: "username or ${IMPALA_USER}",
+      prompt: "Enter username",
+      placeHolder: "username",
     });
     if (user === undefined) {
       return;
     }
 
-    password = await vscode.window.showInputBox({
-      prompt: "Enter password (or use ${ENV_VAR} syntax)",
-      placeHolder: "password or ${IMPALA_PASSWORD}",
-      password: true,
-    });
-    if (password === undefined) {
+    const passwordMode = await vscode.window.showQuickPick(
+      [
+        "Use secret://global (recommended)",
+        "Store plaintext password in .impyla.yml",
+      ],
+      {
+        placeHolder: "Choose how to manage password",
+      },
+    );
+
+    if (!passwordMode) {
       return;
+    }
+
+    if (passwordMode === "Use secret://global (recommended)") {
+      password = GLOBAL_PASSWORD_POINTER;
+      const saveNow = await vscode.window.showInformationMessage(
+        "Would you like to set the global password now?",
+        "Set Now",
+        "Later",
+      );
+      if (saveNow === "Set Now") {
+        await vscode.commands.executeCommand("impyla.setGlobalPassword");
+      }
+    } else {
+      password = await vscode.window.showInputBox({
+        prompt: "Enter plaintext password",
+        placeHolder: "password",
+        password: true,
+      });
+      if (password === undefined) {
+        return;
+      }
     }
   }
 
@@ -107,7 +134,7 @@ export async function createConfigCommand(
   if (user) {
     yamlContent += `  user: ${user}\n`;
   }
-  if (password) {
+  if (password !== undefined) {
     yamlContent += `  password: ${password}\n`;
   }
 

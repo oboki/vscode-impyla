@@ -29,6 +29,14 @@
       {
         "command": "impyla.showOutput",
         "title": "Impyla: Show Output"
+      },
+      {
+        "command": "impyla.setGlobalPassword",
+        "title": "Impyla: Set Global Password"
+      },
+      {
+        "command": "impyla.clearGlobalPassword",
+        "title": "Impyla: Clear Global Password"
       }
     ],
     "configuration": {

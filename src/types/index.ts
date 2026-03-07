@@ -62,6 +62,8 @@ export interface QueryExecutionResponse {
   has_more?: boolean;
   error?: string;
   error_type?: "ConnectionError" | "SQLSyntaxError" | "ImpalaError";
+  exception_class?: string;
+  is_auth_failure?: boolean;
 }
 
 export interface QueryResult {

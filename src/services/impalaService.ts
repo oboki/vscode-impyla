@@ -2,12 +2,16 @@ import * as vscode from "vscode";
 import { spawn } from "child_process";
 import * as path from "path";
 import {
+  ConnectionConfig,
   QueryExecutionRequest,
   QueryExecutionResponse,
   QueryResult,
 } from "../types";
 import { PythonEnvironmentService } from "./pythonEnvironmentService";
 import { ConfigService } from "./configService";
+import { GLOBAL_PASSWORD_SECRET_KEY } from "../commands/manageGlobalPassword";
+
+const GLOBAL_PASSWORD_POINTER = "secret://global";
 
 /**
  * Service for executing Impala queries
@@ -16,6 +20,7 @@ export class ImpalaService {
   constructor(
     private pythonService: PythonEnvironmentService,
     private configService: ConfigService,
+    private secrets: vscode.SecretStorage,
     private outputChannel: vscode.OutputChannel,
     private extensionPath: string,
   ) {}
@@ -28,7 +33,12 @@ export class ImpalaService {
     cancellationToken?: vscode.CancellationToken,
   ): Promise<
     | { success: true; result: QueryResult }
-    | { success: false; error: string; errorType?: string }
+    | {
+        success: false;
+        error: string;
+        errorType?: string;
+        isAuthFailure?: boolean;
+      }
   > {
     const pythonPath = await this.pythonService.findPython();
     if (!pythonPath) {
@@ -49,9 +59,16 @@ export class ImpalaService {
       };
     }
 
+    const resolvedConnection = await this.resolveConnectionPassword(
+      config.connection,
+    );
+    if (!resolvedConnection.success) {
+      return resolvedConnection;
+    }
+
     // Prepare request
     const request: QueryExecutionRequest = {
-      connection: config.connection,
+      connection: resolvedConnection.connection,
       sql,
       max_rows: config.extension?.max_rows || 10000,
     };
@@ -105,6 +122,7 @@ export class ImpalaService {
             success: false,
             error: `Query execution failed: ${stderr || "Unknown error"}`,
             errorType: "ImpalaError",
+            isAuthFailure: this.isPotentialAuthFailure(stderr),
           });
           return;
         }
@@ -137,6 +155,9 @@ export class ImpalaService {
               success: false,
               error: response.error || "Unknown error",
               errorType: response.error_type,
+              isAuthFailure:
+                response.is_auth_failure ??
+                this.isPotentialAuthFailure(response.error || ""),
             });
           }
         } catch (error) {
@@ -161,5 +182,92 @@ export class ImpalaService {
         });
       });
     });
+  }
+
+  private async resolveConnectionPassword(
+    connection: ConnectionConfig,
+  ): Promise<
+    | { success: true; connection: ConnectionConfig }
+    | { success: false; error: string; errorType?: string; isAuthFailure?: boolean }
+  > {
+    if (connection.password !== GLOBAL_PASSWORD_POINTER) {
+      return { success: true, connection };
+    }
+
+    const savedPassword = await this.secrets.get(GLOBAL_PASSWORD_SECRET_KEY);
+    if (savedPassword) {
+      return {
+        success: true,
+        connection: {
+          ...connection,
+          password: savedPassword,
+        },
+      };
+    }
+
+    const action = await vscode.window.showWarningMessage(
+      "password가 secret://global로 설정되어 있지만 저장된 글로벌 비밀번호가 없습니다.",
+      "비밀번호 입력",
+      "취소",
+    );
+
+    if (action !== "비밀번호 입력") {
+      return {
+        success: false,
+        error:
+          "글로벌 비밀번호가 설정되지 않았습니다. Command Palette에서 'Impyla: Set Global Password'를 실행하거나 평문 password를 설정하세요.",
+        errorType: "ConnectionError",
+      };
+    }
+
+    const enteredPassword = await vscode.window.showInputBox({
+      prompt: "Impyla 글로벌 비밀번호를 입력하세요",
+      password: true,
+      ignoreFocusOut: true,
+      validateInput: (value) => {
+        if (!value || !value.trim()) {
+          return "비밀번호를 입력하세요";
+        }
+        return null;
+      },
+    });
+
+    if (!enteredPassword) {
+      return {
+        success: false,
+        error: "글로벌 비밀번호 입력이 취소되었습니다.",
+        errorType: "ConnectionError",
+      };
+    }
+
+    await this.secrets.store(GLOBAL_PASSWORD_SECRET_KEY, enteredPassword);
+    vscode.window.showInformationMessage("글로벌 비밀번호가 저장되었습니다.");
+
+    return {
+      success: true,
+      connection: {
+        ...connection,
+        password: enteredPassword,
+      },
+    };
+  }
+
+  private isPotentialAuthFailure(errorText: string): boolean {
+    if (!errorText) {
+      return false;
+    }
+
+    const normalized = errorText.toLowerCase();
+    const highConfidencePatterns = [
+      /authentication\s+failed/i,
+      /invalid\s+credentials?/i,
+      /bad\s+credentials?/i,
+      /login\s+failed/i,
+      /error\s+validating\s+the\s+login/i,
+      /password\s+is\s+incorrect/i,
+      /ldap.*(invalid|failed|reject|denied)/i,
+    ];
+
+    return highConfidencePatterns.some((pattern) => pattern.test(normalized));
   }
 }

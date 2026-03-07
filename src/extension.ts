@@ -5,6 +5,10 @@ import { JinjaService } from "./services/jinjaService";
 import { ImpalaService } from "./services/impalaService";
 import { executeQueryCommand } from "./commands/executeQuery";
 import { createConfigCommand } from "./commands/createConfig";
+import {
+  clearGlobalPasswordCommand,
+  setGlobalPasswordCommand,
+} from "./commands/manageGlobalPassword";
 
 let outputChannel: vscode.OutputChannel;
 let configService: ConfigService;
@@ -33,6 +37,7 @@ export async function activate(context: vscode.ExtensionContext) {
   impalaService = new ImpalaService(
     pythonService,
     configService,
+    context.secrets,
     outputChannel,
     context.extensionPath,
   );
@@ -117,6 +122,18 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand("impyla.showOutput", () => {
       outputChannel.show();
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("impyla.setGlobalPassword", () => {
+      return setGlobalPasswordCommand(context.secrets);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("impyla.clearGlobalPassword", () => {
+      return clearGlobalPasswordCommand(context.secrets);
     }),
   );
 
