@@ -4,6 +4,15 @@ All notable changes to the "Impyla" extension will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Added `secret://global` password pointer support backed by VS Code SecretStorage.
+- Added commands: `impyla.setGlobalPassword`, `impyla.clearGlobalPassword`.
+- Allowed plaintext `connection.password` while recommending `secret://global`.
+- Removed environment variable expansion (`${...}`) for config values.
+- Added configuration fallback lookup to `~/.impyla.yml` when workspace config is absent.
+- Improved `TSocket read 0 bytes` error message with authentication review guidance and password update action.
+
 ## [0.1.1] - 2026-03-06
 
 ### Changed

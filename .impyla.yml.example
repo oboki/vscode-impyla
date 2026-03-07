@@ -15,12 +15,13 @@ connection:
   auth_mechanism: NOSASL
   
   # Username (required for PLAIN/LDAP auth)
-  # You can use environment variables: ${IMPALA_USER}
   # user: myusername
   
   # Password (required for PLAIN/LDAP auth)
-  # You can use environment variables: ${IMPALA_PASSWORD}
+  # Option 1: Plaintext password in file
   # password: mypassword
+  # Option 2 (recommended): Use global secret pointer
+  # password: secret://global
   
   # Query timeout in seconds (default: 300)
   timeout: 300

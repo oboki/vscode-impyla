@@ -56,6 +56,12 @@ extension:
   max_rows: 10000
 ```
 
+Config lookup order is:
+1. Workspace `.impyla.yml`
+2. `~/.impyla.yml` fallback
+
+For PLAIN/LDAP authentication, password can be either plaintext or `secret://global`.
+
 ## Step 4: Write Your First Query
 
 Create `test.sql`:
@@ -122,6 +128,8 @@ python3 --version  # Should be 3.7+
 - Verify Impala server is running
 - Check host and port in `.impyla.yml`
 - Test connection: `telnet your-impala-host 21050`
+- If using `secret://global`, run **Impyla: Set Global Password**
+- `TSocket read 0 bytes` can be auth/network/protocol related, so verify credentials too
 
 ### View Logs
 
@@ -136,7 +144,7 @@ Run command: **Impyla: Show Output**
 
 ## Tips
 
-1. **Environment Variables**: Use `${VAR_NAME}` in config for sensitive data
+1. **Password Options**: Use plaintext or `secret://global` in `.impyla.yml`
 2. **Cancel Queries**: Click the cancel button in the progress notification
 3. **Multiple Queries**: Select specific SQL text to execute just that portion
 4. **Template Validation**: Verify variables/macros in `.impyla.yml` before execution

@@ -47,10 +47,14 @@ Use this checklist to verify all extension functionality works correctly.
 - [ ] Configuration reloaded (check output channel)
 - [ ] Invalid config shows error message
 
-### Environment Variables
-- [ ] Set environment variable: `export TEST_VAR=test_value`
-- [ ] Use `${TEST_VAR}` in config
-- [ ] Variable is substituted correctly (check in rendered SQL or logs)
+### Password Management
+- [ ] Configure `password: secret://global`
+- [ ] If no stored value: prompt appears to enter global password
+- [ ] Enter password and confirm it is saved and query proceeds
+- [ ] Run command "Impyla: Set Global Password" and verify save confirmation
+- [ ] Run command "Impyla: Clear Global Password" and verify delete confirmation
+- [ ] Configure plaintext password in `.impyla.yml` and verify query works
+- [ ] Use `${IMPALA_PASSWORD}` in password and verify config validation fails
 
 ## Python Environment Testing
 
@@ -103,6 +107,11 @@ Use this checklist to verify all extension functionality works correctly.
 - [ ] Connection error shown
 - [ ] "Check Configuration" button appears
 - [ ] Clicking opens config file
+
+### TSocket Error UX
+- [ ] Trigger or mock `TSocket read 0 bytes` error
+- [ ] Friendly guidance message appears (auth/network/protocol possibilities)
+- [ ] If using `secret://global`, action to update global password appears
 
 ### Query Cancellation
 - [ ] Execute long-running query

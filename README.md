@@ -10,6 +10,7 @@ Execute Impala queries directly from VS Code with Jinja2 templating support.
 - 🔍 Inspect rendered SQL in query results for templated queries
 - ⚙️ Configuration via `.impyla.yml`
 - 🔐 Support for multiple authentication mechanisms
+- 🔑 Optional secure password management with `secret://global`
 
 ## Requirements
 
@@ -45,6 +46,10 @@ extension:
 ```
 
 Or use the command palette: **Impyla: Create Configuration**
+
+Configuration lookup order:
+1. Workspace `.impyla.yml`
+2. `~/.impyla.yml` (fallback)
 
 ### 3. Write SQL Queries
 
@@ -122,6 +127,8 @@ WHERE event_date >= '{{ days_ago(7) }}'
 - **Impyla: Execute Query (Selection or Entire Document)** - Execute selected SQL if present, otherwise execute the full SQL document
 - **Impyla: Create Configuration** - Setup wizard for `.impyla.yml`
 - **Impyla: Show Output** - Show extension output channel
+- **Impyla: Set Global Password** - Save global password in VS Code SecretStorage
+- **Impyla: Clear Global Password** - Remove saved global password
 
 ## Configuration
 
@@ -134,21 +141,37 @@ connection:
   database: string          # Default database
   auth_mechanism: string    # NOSASL, PLAIN, LDAP, or KERBEROS
   user: string             # Username (for PLAIN/LDAP)
-  password: string         # Password (for PLAIN/LDAP)
+  password: string         # Plaintext password OR secret://global (for PLAIN/LDAP)
   timeout: number          # Query timeout in seconds
   use_ssl: boolean         # Use SSL connection
   ca_cert: string          # Path to CA certificate
 ```
 
-### Environment Variables
+### Password Management
 
-Use `${VAR_NAME}` syntax for sensitive data:
+`password` supports two modes:
 
 ```yaml
 connection:
-  user: ${IMPALA_USER}
-  password: ${IMPALA_PASSWORD}
+  user: my_user
+  password: my_plaintext_password
 ```
+
+or
+
+```yaml
+connection:
+  user: my_user
+  password: secret://global
+```
+
+When using `secret://global`, store the actual password with:
+
+- **Impyla: Set Global Password**
+
+If `secret://global` is configured but no saved value exists, the extension prompts you to enter and save the password immediately.
+
+Environment variable expansion (`${...}`) is not supported.
 
 ## Authentication
 
@@ -189,6 +212,7 @@ pip install impyla jinja2
 - Verify Impala server is running and accessible
 - Check host, port, and authentication settings in `.impyla.yml`
 - Review extension output channel for detailed error messages
+- For `TSocket read 0 bytes`, verify both connectivity and credentials (it may indicate auth, network, or protocol mismatch)
 
 ## Examples
 
