@@ -41,6 +41,18 @@ def to_json_safe(value: Any) -> Any:
 
 def execute_query(config: Dict[str, Any]) -> Dict[str, Any]:
     """Execute an Impala query and return results"""
+    def looks_like_auth_failure(message: str) -> bool:
+        normalized = message.lower()
+        patterns = [
+            "authentication failed",
+            "invalid credentials",
+            "bad credentials",
+            "login failed",
+            "error validating the login",
+            "password is incorrect",
+        ]
+        return any(pattern in normalized for pattern in patterns)
+
     try:
         from impala.dbapi import connect
         from impala.error import Error as ImpalaError
@@ -123,6 +135,7 @@ def execute_query(config: Dict[str, Any]) -> Dict[str, Any]:
     except ImpalaError as e:
         error_msg = str(e)
         error_type = "ImpalaError"
+        exception_class = e.__class__.__name__
 
         # Classify error type
         if "connect" in error_msg.lower() or "connection" in error_msg.lower():
@@ -134,10 +147,23 @@ def execute_query(config: Dict[str, Any]) -> Dict[str, Any]:
         ):
             error_type = "SQLSyntaxError"
 
-        return {"success": False, "error": error_msg, "error_type": error_type}
+        return {
+            "success": False,
+            "error": error_msg,
+            "error_type": error_type,
+            "exception_class": exception_class,
+            "is_auth_failure": looks_like_auth_failure(error_msg),
+        }
 
     except Exception as e:
-        return {"success": False, "error": str(e), "error_type": "ImpalaError"}
+        error_msg = str(e)
+        return {
+            "success": False,
+            "error": error_msg,
+            "error_type": "ImpalaError",
+            "exception_class": e.__class__.__name__,
+            "is_auth_failure": looks_like_auth_failure(error_msg),
+        }
 
     finally:
         # Clean up

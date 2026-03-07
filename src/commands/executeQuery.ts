@@ -5,6 +5,8 @@ import { ImpalaService } from "../services/impalaService";
 import { PythonEnvironmentService } from "../services/pythonEnvironmentService";
 import { ResultsPanel } from "../panels/resultsPanel";
 
+const GLOBAL_PASSWORD_POINTER = "secret://global";
+
 /**
  * Command to execute SQL query
  */
@@ -127,6 +129,62 @@ export async function executeQueryCommand(
     );
   } else {
     resultsPanel.showError(result.error, result.errorType);
+
+    const configuredPassword = configService.getConfig()?.connection.password;
+    const usesGlobalSecretPointer =
+      configuredPassword === GLOBAL_PASSWORD_POINTER;
+    const isTSocketReadZeroBytes = /tsocket\s+read\s+0\s+bytes/i.test(
+      result.error,
+    );
+    const isPotentialAuthFailure =
+      result.isAuthFailure ||
+      /authentication\s+failed|invalid\s+credentials?|login\s+failed|bad\s+credentials?/i.test(
+        result.error,
+      );
+
+    if (isTSocketReadZeroBytes) {
+      const action = await vscode.window.showErrorMessage(
+        "연결이 중단되었습니다 (TSocket read 0 bytes). 인증 실패, 네트워크 이슈, SASL/TLS 설정 불일치 등에서 발생할 수 있습니다. 현재 환경에서는 인증 정보 확인도 권장됩니다.",
+        ...(usesGlobalSecretPointer
+          ? ["글로벌 비밀번호 변경", "구성 파일 열기"]
+          : ["구성 파일 열기"]),
+      );
+
+      if (action === "글로벌 비밀번호 변경") {
+        await vscode.commands.executeCommand("impyla.setGlobalPassword");
+      }
+      if (
+        action === "구성 파일 열기" &&
+        configService.getConfigPath()
+      ) {
+        const doc = await vscode.workspace.openTextDocument(
+          configService.getConfigPath()!,
+        );
+        await vscode.window.showTextDocument(doc);
+      }
+      return;
+    }
+
+    if (isPotentialAuthFailure && usesGlobalSecretPointer) {
+      const action = await vscode.window.showErrorMessage(
+        `인증 실패 가능성이 있습니다: ${result.error}`,
+        "글로벌 비밀번호 변경",
+        "구성 파일 열기",
+      );
+
+      if (action === "글로벌 비밀번호 변경") {
+        await vscode.commands.executeCommand("impyla.setGlobalPassword");
+        return;
+      }
+
+      if (action === "구성 파일 열기" && configService.getConfigPath()) {
+        const doc = await vscode.workspace.openTextDocument(
+          configService.getConfigPath()!,
+        );
+        await vscode.window.showTextDocument(doc);
+        return;
+      }
+    }
 
     // Show appropriate error message
     if (result.errorType === "ConnectionError") {
