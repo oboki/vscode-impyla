@@ -144,17 +144,17 @@ export async function executeQueryCommand(
 
     if (isTSocketReadZeroBytes) {
       const action = await vscode.window.showErrorMessage(
-        "연결이 중단되었습니다 (TSocket read 0 bytes). 인증 실패, 네트워크 이슈, SASL/TLS 설정 불일치 등에서 발생할 수 있습니다. 현재 환경에서는 인증 정보 확인도 권장됩니다.",
+        "Connection was interrupted (TSocket read 0 bytes). This may be caused by authentication failure, network issues, or SASL/TLS mismatches. Verify your credentials and connection settings.",
         ...(usesGlobalSecretPointer
-          ? ["글로벌 비밀번호 변경", "구성 파일 열기"]
-          : ["구성 파일 열기"]),
+          ? ["Set Global Password", "Open Config File"]
+          : ["Open Config File"]),
       );
 
-      if (action === "글로벌 비밀번호 변경") {
+      if (action === "Set Global Password") {
         await vscode.commands.executeCommand("impyla.setGlobalPassword");
       }
       if (
-        action === "구성 파일 열기" &&
+        action === "Open Config File" &&
         configService.getConfigPath()
       ) {
         const doc = await vscode.workspace.openTextDocument(
@@ -167,17 +167,17 @@ export async function executeQueryCommand(
 
     if (isPotentialAuthFailure && usesGlobalSecretPointer) {
       const action = await vscode.window.showErrorMessage(
-        `인증 실패 가능성이 있습니다: ${result.error}`,
-        "글로벌 비밀번호 변경",
-        "구성 파일 열기",
+        `Possible authentication failure: ${result.error}`,
+        "Set Global Password",
+        "Open Config File",
       );
 
-      if (action === "글로벌 비밀번호 변경") {
+      if (action === "Set Global Password") {
         await vscode.commands.executeCommand("impyla.setGlobalPassword");
         return;
       }
 
-      if (action === "구성 파일 열기" && configService.getConfigPath()) {
+      if (action === "Open Config File" && configService.getConfigPath()) {
         const doc = await vscode.workspace.openTextDocument(
           configService.getConfigPath()!,
         );

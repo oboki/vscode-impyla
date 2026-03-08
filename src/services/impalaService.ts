@@ -206,27 +206,27 @@ export class ImpalaService {
     }
 
     const action = await vscode.window.showWarningMessage(
-      "password가 secret://global로 설정되어 있지만 저장된 글로벌 비밀번호가 없습니다.",
-      "비밀번호 입력",
-      "취소",
+      "connection.password is set to secret://global, but no saved global password was found.",
+      "Enter Password",
+      "Cancel",
     );
 
-    if (action !== "비밀번호 입력") {
+    if (action !== "Enter Password") {
       return {
         success: false,
         error:
-          "글로벌 비밀번호가 설정되지 않았습니다. Command Palette에서 'Impyla: Set Global Password'를 실행하거나 평문 password를 설정하세요.",
+          "Global password is not set. Run 'Impyla: Set Global Password' from the Command Palette or use a plaintext connection.password value.",
         errorType: "ConnectionError",
       };
     }
 
     const enteredPassword = await vscode.window.showInputBox({
-      prompt: "Impyla 글로벌 비밀번호를 입력하세요",
+      prompt: "Enter the Impyla global password",
       password: true,
       ignoreFocusOut: true,
       validateInput: (value) => {
         if (!value || !value.trim()) {
-          return "비밀번호를 입력하세요";
+          return "Password is required";
         }
         return null;
       },
@@ -235,13 +235,13 @@ export class ImpalaService {
     if (!enteredPassword) {
       return {
         success: false,
-        error: "글로벌 비밀번호 입력이 취소되었습니다.",
+        error: "Global password entry was cancelled.",
         errorType: "ConnectionError",
       };
     }
 
     await this.secrets.store(GLOBAL_PASSWORD_SECRET_KEY, enteredPassword);
-    vscode.window.showInformationMessage("글로벌 비밀번호가 저장되었습니다.");
+    vscode.window.showInformationMessage("Global password has been saved.");
 
     return {
       success: true,
