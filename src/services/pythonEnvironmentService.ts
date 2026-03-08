@@ -1,7 +1,10 @@
 import * as vscode from "vscode";
 import { spawn } from "child_process";
-import * as fs from "fs";
-import * as path from "path";
+
+type DependencyCheckResult =
+  | { status: "ready" }
+  | { status: "missing"; missingPackages: string[]; pythonPath: string }
+  | { status: "no-python" };
 
 /**
  * Service for managing Python environment and dependencies
@@ -10,7 +13,9 @@ export class PythonEnvironmentService {
   private pythonPath: string | null = null;
   private dependenciesChecked = false;
   private checkInProgress = false;
-  private checkPromise: Promise<boolean> | null = null;
+  private checkPromise: Promise<DependencyCheckResult> | null = null;
+  private installPromptInProgress = false;
+  private installPromptPromise: Promise<boolean> | null = null;
 
   constructor(private outputChannel: vscode.OutputChannel) {}
 
@@ -22,31 +27,23 @@ export class PythonEnvironmentService {
       return this.pythonPath;
     }
 
-    // Strategy 1: Check VSCode Python extension settings
-    const pythonConfig = vscode.workspace.getConfiguration("python");
-    const pythonPathFromConfig = pythonConfig.get<string>(
-      "defaultInterpreterPath",
-    );
-    if (pythonPathFromConfig && (await this.testPython(pythonPathFromConfig))) {
-      this.pythonPath = pythonPathFromConfig;
-      this.outputChannel.appendLine(
-        `Found Python from VSCode settings: ${this.pythonPath}`,
-      );
-      return this.pythonPath;
-    }
-
-    // Strategy 2: Check workspace config
+    // Strategy 1: Check extension setting
     const impylaConfig = vscode.workspace.getConfiguration("impyla");
     const workspacePythonPath = impylaConfig.get<string>("pythonPath");
     if (workspacePythonPath && (await this.testPython(workspacePythonPath))) {
       this.pythonPath = workspacePythonPath;
       this.outputChannel.appendLine(
-        `Found Python from workspace config: ${this.pythonPath}`,
+        `Found Python from impyla.pythonPath: ${this.pythonPath}`,
       );
       return this.pythonPath;
     }
+    if (workspacePythonPath) {
+      this.outputChannel.appendLine(
+        `Configured impyla.pythonPath is invalid or unsupported: ${workspacePythonPath}`,
+      );
+    }
 
-    // Strategy 3: Try common Python names
+    // Strategy 2: Try common Python names from PATH
     const pythonNames = [
       "python3",
       "python",
@@ -126,29 +123,32 @@ export class PythonEnvironmentService {
       this.outputChannel.appendLine(
         "Dependencies check already in progress, waiting...",
       );
-      return this.checkPromise;
+      const inFlightResult = await this.checkPromise;
+      return await this.handleDependencyCheckResult(inFlightResult);
     }
 
     // Start new check
     this.checkInProgress = true;
     this.checkPromise = this.performDependencyCheck();
 
+    let result: DependencyCheckResult;
     try {
-      const result = await this.checkPromise;
-      return result;
+      result = await this.checkPromise;
     } finally {
       this.checkInProgress = false;
       this.checkPromise = null;
     }
+
+    return await this.handleDependencyCheckResult(result);
   }
 
   /**
    * Perform the actual dependency check
    */
-  private async performDependencyCheck(): Promise<boolean> {
+  private async performDependencyCheck(): Promise<DependencyCheckResult> {
     const pythonPath = await this.findPython();
     if (!pythonPath) {
-      return false;
+      return { status: "no-python" };
     }
 
     const requiredPackages: Record<string, string> = {
@@ -169,21 +169,76 @@ export class PythonEnvironmentService {
       this.outputChannel.appendLine(
         `Missing Python packages: ${missingPackages.join(", ")}`,
       );
+      return {
+        status: "missing",
+        missingPackages,
+        pythonPath,
+      };
+    }
 
-      const answer = await vscode.window.showWarningMessage(
-        `Missing required Python packages: ${missingPackages.join(", ")}. Install them now?`,
-        "Install",
-        "Cancel",
+    return { status: "ready" };
+  }
+
+  /**
+   * Handle dependency check result, including optional install prompt
+   */
+  private async handleDependencyCheckResult(
+    result: DependencyCheckResult,
+  ): Promise<boolean> {
+    if (result.status === "no-python") {
+      return false;
+    }
+
+    if (result.status === "ready") {
+      this.dependenciesChecked = true;
+      this.outputChannel.appendLine("All Python dependencies are installed");
+      return true;
+    }
+
+    if (this.installPromptInProgress && this.installPromptPromise) {
+      this.outputChannel.appendLine(
+        "Dependency installation prompt already in progress, waiting...",
       );
+      return await this.installPromptPromise;
+    }
 
-      if (answer !== "Install") {
-        return false;
-      }
+    this.installPromptInProgress = true;
+    this.installPromptPromise = this.promptAndInstallMissingPackages(
+      result.missingPackages,
+      result.pythonPath,
+    );
 
-      const installed = await this.installPackages(missingPackages);
-      if (!installed) {
-        return false;
-      }
+    try {
+      return await this.installPromptPromise;
+    } finally {
+      this.installPromptInProgress = false;
+      this.installPromptPromise = null;
+    }
+  }
+
+  /**
+   * Prompt user and install missing packages
+   */
+  private async promptAndInstallMissingPackages(
+    missingPackages: string[],
+    pythonPathForCheck: string,
+  ): Promise<boolean> {
+    const answer = await vscode.window.showWarningMessage(
+      `Missing required Python packages: ${missingPackages.join(", ")}. Install them now?`,
+      "Install",
+      "Cancel",
+    );
+
+    if (answer !== "Install") {
+      return false;
+    }
+
+    const installed = await this.installPackages(
+      missingPackages,
+      pythonPathForCheck,
+    );
+    if (!installed) {
+      return false;
     }
 
     this.dependenciesChecked = true;
@@ -219,8 +274,11 @@ export class PythonEnvironmentService {
   /**
    * Install Python packages using pip
    */
-  private async installPackages(packages: string[]): Promise<boolean> {
-    const pythonPath = this.pythonPath;
+  private async installPackages(
+    packages: string[],
+    preferredPythonPath?: string,
+  ): Promise<boolean> {
+    const pythonPath = preferredPythonPath || (await this.findPython());
     if (!pythonPath) {
       return false;
     }
@@ -288,6 +346,17 @@ export class PythonEnvironmentService {
    */
   getPythonPath(): string | null {
     return this.pythonPath;
+  }
+
+  /**
+   * Reset resolved Python path and dependency state
+   */
+  resetEnvironmentState(): void {
+    this.pythonPath = null;
+    this.dependenciesChecked = false;
+    this.outputChannel.appendLine(
+      "Python environment state reset due to configuration change",
+    );
   }
 
   /**

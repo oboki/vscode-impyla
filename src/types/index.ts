@@ -27,7 +27,6 @@ export interface JinjaConfig {
 
 export interface ExtensionConfig {
   max_rows?: number;
-  python_path?: string;
   auto_preview?: boolean;
 }
 

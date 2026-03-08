@@ -172,7 +172,6 @@ export class ConfigService {
 
     config.extension = config.extension || {};
     config.extension.max_rows = config.extension.max_rows || 10000;
-    config.extension.python_path = config.extension.python_path || "python3";
     config.extension.auto_preview =
       config.extension.auto_preview !== undefined
         ? config.extension.auto_preview

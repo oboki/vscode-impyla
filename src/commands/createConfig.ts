@@ -147,7 +147,6 @@ jinja:
 
 extension:
   max_rows: 10000
-  python_path: python3
   auto_preview: true
 `;
 
