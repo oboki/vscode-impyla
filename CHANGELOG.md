@@ -4,6 +4,8 @@ All notable changes to the "Impyla" extension will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-03-08
+
 ### Changed
 
 - Added `secret://global` password pointer support backed by VS Code SecretStorage.
@@ -12,6 +14,10 @@ All notable changes to the "Impyla" extension will be documented in this file.
 - Removed environment variable expansion (`${...}`) for config values.
 - Added configuration fallback lookup to `~/.impyla.yml` when workspace config is absent.
 - Improved `TSocket read 0 bytes` error message with authentication review guidance and password update action.
+- Simplified Python interpreter resolution: `impyla.pythonPath` now takes priority, with PATH-based fallback.
+- Removed deprecated config field `extension.python_path` from schema/templates/docs.
+- Improved dependency check/install flow to avoid stale in-progress lock behavior.
+- Standardized runtime UI notifications/prompts/messages to English.
 
 ## [0.1.1] - 2026-03-06
 

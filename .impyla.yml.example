@@ -50,8 +50,5 @@ extension:
   # Maximum number of rows to fetch (default: 10000)
   max_rows: 10000
   
-  # Path to Python executable (default: python3)
-  # python_path: python3
-  
   # Auto-preview Jinja templates (default: true)
   auto_preview: true

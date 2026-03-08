@@ -4,6 +4,7 @@ src/**
 **/*.map
 
 # Development and editor artifacts
+.venv
 .vscode/**
 .git/**
 .gitignore
