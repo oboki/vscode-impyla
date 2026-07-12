@@ -125,6 +125,7 @@ WHERE event_date >= '{{ days_ago(7) }}'
 ## Commands
 
 - **Impyla: Run Query (Selection or File)** - Execute selected SQL if present, otherwise execute the full SQL document
+- **Impyla: Preview Rendered SQL** - Render selected SQL (or the full file) with Jinja and show rendered SQL in the results panel
 - **Impyla: Create Configuration** - Setup wizard for `.impyla.yml`
 - **Impyla: Show Output** - Show extension output channel
 - **Impyla: Set Global Password** - Save global password in VS Code SecretStorage

@@ -4,6 +4,7 @@ import { PythonEnvironmentService } from "./services/pythonEnvironmentService";
 import { JinjaService } from "./services/jinjaService";
 import { ImpalaService } from "./services/impalaService";
 import { executeQueryCommand } from "./commands/executeQuery";
+import { previewRenderCommand } from "./commands/previewRender";
 import { createConfigCommand } from "./commands/createConfig";
 import {
   clearGlobalPasswordCommand,
@@ -182,6 +183,16 @@ export async function activate(context: vscode.ExtensionContext) {
       } else {
         showConfigSetupStatusBar();
       }
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("impyla.previewRenderedSql", () => {
+      previewRenderCommand(
+        jinjaService,
+        resultsViewProvider,
+        outputChannel,
+      );
     }),
   );
 

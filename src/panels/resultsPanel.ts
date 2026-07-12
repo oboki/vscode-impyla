@@ -276,7 +276,7 @@ export class ResultsViewProvider implements vscode.WebviewViewProvider {
       <pre class="sql-block" id="rendered-sql-pre"><code class="language-sql" id="rendered-sql-code"></code></pre>
     </section>
 
-    <section class="panel-section results-panel" aria-labelledby="results-title">
+    <section class="panel-section results-panel" id="results-data-section" aria-labelledby="results-title">
       <div class="section-header">
         <div>
           <h2 class="section-title" id="results-title">Query results</h2>

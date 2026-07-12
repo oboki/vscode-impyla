@@ -46,6 +46,10 @@
         "title": "Impyla: Create Configuration"
       },
       {
+        "command": "impyla.previewRenderedSql",
+        "title": "Impyla: Preview Rendered SQL"
+      },
+      {
         "command": "impyla.showOutput",
         "title": "Impyla: Show Output"
       },

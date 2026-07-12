@@ -18,6 +18,7 @@
   const summaryExecutionTime = document.getElementById('summary-execution-time');
   const summaryColumnCount = document.getElementById('summary-column-count');
   const warningBanner = document.getElementById('warning-banner');
+  const resultsDataSection = document.getElementById('results-data-section');
   const renderedSqlSection = document.getElementById('rendered-sql-section');
   const renderedSqlSubtitle = document.getElementById('rendered-sql-subtitle');
   const renderedSqlPre = document.getElementById('rendered-sql-pre');
@@ -307,6 +308,12 @@
       renderedSqlSubtitle.textContent = '';
       renderedSqlCode.textContent = '';
     }
+
+    const isRenderOnlyPreview =
+      Boolean(result.renderedSql) &&
+      result.columns.length === 0 &&
+      result.rows.length === 0;
+    resultsDataSection.hidden = isRenderOnlyPreview;
 
     renderTable();
   }
