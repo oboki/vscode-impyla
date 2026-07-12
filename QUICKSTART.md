@@ -2,6 +2,69 @@
 
 Get up and running with Impyla in 5 minutes!
 
+## Minimal Local Impala (Recommended for First Test)
+
+If you do not already have an Impala cluster, the fastest path is a single-node
+Docker quickstart using prebuilt Apache images.
+
+### Prerequisites
+
+- Docker and Docker Compose plugin (`docker compose`)
+- ~8GB RAM available for containers (Impala daemon uses a 4GB memory limit)
+
+### Start Local Impala
+
+```bash
+# 1) Prepare helper directory
+mkdir -p .local-impala-quickstart/quickstart_conf
+
+# 2) Download compose and config files from Apache Impala
+curl -fsSL https://raw.githubusercontent.com/apache/impala/master/docker/quickstart.yml \
+  -o .local-impala-quickstart/quickstart.yml
+curl -fsSL https://raw.githubusercontent.com/apache/impala/master/docker/quickstart_conf/hive-site.xml \
+  -o .local-impala-quickstart/quickstart_conf/hive-site.xml
+
+# 3) Create required Docker network (no-op if already exists)
+docker network inspect quickstart-network >/dev/null 2>&1 || \
+  docker network create -d bridge quickstart-network
+
+# 4) Start single-node Impala (prebuilt images)
+cd .local-impala-quickstart
+QUICKSTART_LISTEN_ADDR=0.0.0.0 \
+IMPALA_QUICKSTART_IMAGE_PREFIX='apache/impala:4.5.0-' \
+docker compose -f quickstart.yml up -d
+```
+
+### Verify Engine
+
+```bash
+QUICKSTART_IP=$(docker network inspect quickstart-network -f '{{(index .IPAM.Config 0).Gateway}}')
+docker run --rm --network=quickstart-network \
+  apache/impala:4.5.0-impala_quickstart_client \
+  impala-shell -i "$QUICKSTART_IP" -q "select 1 as ok"
+```
+
+You should see one row with value `1`.
+
+### Use With This Extension
+
+Set your `.impyla.yml` connection values to:
+
+```yaml
+connection:
+  host: localhost
+  port: 21050
+  database: default
+  auth_mechanism: NOSASL
+```
+
+### Stop Local Impala
+
+```bash
+cd .local-impala-quickstart
+QUICKSTART_LISTEN_ADDR=0.0.0.0 docker compose -f quickstart.yml down
+```
+
 ## Step 1: Install Extension
 
 ### Option A: From Source (Development)
