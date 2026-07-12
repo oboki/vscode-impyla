@@ -18,6 +18,8 @@ let jinjaService: JinjaService;
 let impalaService: ImpalaService;
 let resultsViewProvider: ResultsViewProvider;
 let configPromptShown = false;
+let configSetupStatusBarItem: vscode.StatusBarItem | undefined;
+let dependencySetupStatusBarItem: vscode.StatusBarItem | undefined;
 
 /**
  * Extension activation
@@ -57,6 +59,45 @@ export async function activate(context: vscode.ExtensionContext) {
     ),
   );
 
+  const showConfigSetupStatusBar = () => {
+    if (!configSetupStatusBarItem) {
+      configSetupStatusBarItem = vscode.window.createStatusBarItem(
+        vscode.StatusBarAlignment.Left,
+        101,
+      );
+      configSetupStatusBarItem.text = "$(warning) Impyla: Create .impyla.yml";
+      configSetupStatusBarItem.tooltip =
+        "Impyla configuration is missing. Click to create .impyla.yml";
+      configSetupStatusBarItem.command = "impyla.createConfig";
+      context.subscriptions.push(configSetupStatusBarItem);
+    }
+    configSetupStatusBarItem.show();
+  };
+
+  const hideConfigSetupStatusBar = () => {
+    configSetupStatusBarItem?.hide();
+  };
+
+  const showDependencySetupStatusBar = () => {
+    if (!dependencySetupStatusBarItem) {
+      dependencySetupStatusBarItem = vscode.window.createStatusBarItem(
+        vscode.StatusBarAlignment.Left,
+        102,
+      );
+      dependencySetupStatusBarItem.text =
+        "$(package) Impyla: Install Python deps";
+      dependencySetupStatusBarItem.tooltip =
+        "Required Python packages are missing. Click to install impyla and jinja2.";
+      dependencySetupStatusBarItem.command = "impyla.installDependencies";
+      context.subscriptions.push(dependencySetupStatusBarItem);
+    }
+    dependencySetupStatusBarItem.show();
+  };
+
+  const hideDependencySetupStatusBar = () => {
+    dependencySetupStatusBarItem?.hide();
+  };
+
   // Check Python availability
   const pythonPath = await pythonService.findPython();
   if (!pythonPath) {
@@ -80,10 +121,12 @@ export async function activate(context: vscode.ExtensionContext) {
     pythonService.checkDependencies().then((success) => {
       if (success) {
         outputChannel.appendLine("Python dependencies verified");
+        hideDependencySetupStatusBar();
       } else {
         outputChannel.appendLine(
           "Python dependencies missing or not installed",
         );
+        showDependencySetupStatusBar();
       }
     });
   }
@@ -92,10 +135,12 @@ export async function activate(context: vscode.ExtensionContext) {
   configService.loadConfig().then((config) => {
     if (config) {
       outputChannel.appendLine("Configuration loaded successfully");
+      hideConfigSetupStatusBar();
     } else {
       outputChannel.appendLine(
         "No configuration found - user can create one with impyla.createConfig",
       );
+      showConfigSetupStatusBar();
       // Only show prompt once per session
       if (!configPromptShown) {
         configPromptShown = true;
@@ -129,14 +174,31 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("impyla.createConfig", () => {
-      createConfigCommand(outputChannel);
+    vscode.commands.registerCommand("impyla.createConfig", async () => {
+      await createConfigCommand(outputChannel);
+      const config = await configService.loadConfig();
+      if (config) {
+        hideConfigSetupStatusBar();
+      } else {
+        showConfigSetupStatusBar();
+      }
     }),
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand("impyla.showOutput", () => {
       outputChannel.show();
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("impyla.installDependencies", async () => {
+      const success = await pythonService.checkDependencies();
+      if (success) {
+        hideDependencySetupStatusBar();
+      } else {
+        showDependencySetupStatusBar();
+      }
     }),
   );
 
@@ -173,8 +235,10 @@ export async function activate(context: vscode.ExtensionContext) {
       configService.loadConfig().then((config) => {
         if (config) {
           outputChannel.appendLine("Configuration reloaded successfully");
+          hideConfigSetupStatusBar();
         } else {
           outputChannel.appendLine("No configuration found in new workspace");
+          showConfigSetupStatusBar();
         }
       });
     }),
@@ -187,7 +251,13 @@ export async function activate(context: vscode.ExtensionContext) {
           "impyla.pythonPath changed, resetting Python environment state...",
         );
         pythonService.resetEnvironmentState();
-        void pythonService.checkDependencies();
+        void pythonService.checkDependencies().then((success) => {
+          if (success) {
+            hideDependencySetupStatusBar();
+          } else {
+            showDependencySetupStatusBar();
+          }
+        });
       }
     }),
   );
