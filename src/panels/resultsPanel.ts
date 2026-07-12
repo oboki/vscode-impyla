@@ -224,19 +224,10 @@ export class ResultsViewProvider implements vscode.WebviewViewProvider {
   </section>
 
   <section id="results-view" hidden>
-    <section class="summary-grid" aria-label="Query summary">
-      <article class="summary-card">
-        <span class="summary-label">Rows fetched</span>
-        <strong class="summary-value" id="summary-row-count">0</strong>
-      </article>
-      <article class="summary-card">
-        <span class="summary-label">Execution time</span>
-        <strong class="summary-value" id="summary-execution-time">0ms</strong>
-      </article>
-      <article class="summary-card">
-        <span class="summary-label">Columns</span>
-        <strong class="summary-value" id="summary-column-count">0</strong>
-      </article>
+    <section class="results-stats" aria-label="Query summary">
+      <span class="stats-chip"><span class="stats-label">Rows</span><strong id="summary-row-count">0</strong></span>
+      <span class="stats-chip"><span class="stats-label">Time</span><strong id="summary-execution-time">0ms</strong></span>
+      <span class="stats-chip"><span class="stats-label">Columns</span><strong id="summary-column-count">0</strong></span>
     </section>
 
     <section class="warning-banner" id="warning-banner" role="status" aria-live="polite" hidden></section>
@@ -259,7 +250,7 @@ export class ResultsViewProvider implements vscode.WebviewViewProvider {
       <div class="section-header">
         <div>
           <h2 class="section-title" id="results-title">Query results</h2>
-          <p class="section-subtitle">Filter, sort, page through fetched rows, or export the current filtered result set.</p>
+          <p class="section-subtitle">Primary data view. Sort columns, navigate pages, and export fetched rows.</p>
         </div>
         <div class="toolbar-actions">
           <button class="action-button secondary" id="copy-page-button" type="button">Copy page</button>
@@ -268,25 +259,8 @@ export class ResultsViewProvider implements vscode.WebviewViewProvider {
         </div>
       </div>
 
-      <div class="results-toolbar" role="toolbar" aria-label="Results controls">
-        <label class="search-input-wrapper">
-          <span class="sr-only">Search results</span>
-          <input id="result-search" class="search-input" type="search" placeholder="Search rows or column names" aria-label="Search rows or column names">
-        </label>
-        <label class="page-size-control">
-          <span>Rows per page</span>
-          <select id="page-size-select" aria-label="Rows per page">
-            <option value="100">100</option>
-            <option value="200" selected>200</option>
-            <option value="500">500</option>
-            <option value="1000">1000</option>
-            <option value="-1">All fetched rows</option>
-          </select>
-        </label>
-      </div>
-
       <div class="results-meta" id="results-meta" aria-live="polite"></div>
-      <div class="empty-state" id="empty-state" hidden>No rows match the current filter.</div>
+      <div class="empty-state" id="empty-state" hidden>No rows returned.</div>
 
       <div class="table-container">
         <table id="results-table">

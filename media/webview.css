@@ -80,28 +80,30 @@ code {
   cursor: not-allowed;
 }
 
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-  margin-bottom: 20px;
+.results-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
-.summary-card {
-  padding: 14px 16px;
-  background-color: var(--vscode-textCodeBlock-background);
+.stats-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
   border: 1px solid var(--vscode-panel-border);
-  border-radius: 8px;
+  background-color: var(--vscode-editor-background);
+  font-size: 12px;
 }
 
-.summary-label {
-  display: block;
+.stats-label {
   color: var(--vscode-descriptionForeground);
-  margin-bottom: 6px;
 }
 
-.summary-value {
-  font-size: 22px;
+.stats-chip strong {
+  font-size: 12px;
   color: var(--vscode-foreground);
 }
 
@@ -349,39 +351,6 @@ code {
   color: var(--vscode-editor-foreground);
 }
 
-.results-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.search-input-wrapper {
-  flex: 1;
-  min-width: 220px;
-}
-
-.search-input,
-.page-size-control select {
-  width: 100%;
-  box-sizing: border-box;
-  border: 1px solid var(--vscode-input-border);
-  background-color: var(--vscode-input-background);
-  color: var(--vscode-input-foreground);
-  border-radius: 6px;
-  padding: 8px 10px;
-  font: inherit;
-}
-
-.page-size-control {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--vscode-descriptionForeground);
-}
-
 .results-meta {
   margin-bottom: 12px;
   color: var(--vscode-descriptionForeground);
@@ -410,7 +379,8 @@ code {
 
 /* Query results - Table */
 .table-container {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: 62vh;
   border: 1px solid var(--vscode-panel-border);
   border-radius: 6px;
 }

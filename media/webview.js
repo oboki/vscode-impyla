@@ -25,8 +25,6 @@
   const copySqlButton = document.getElementById('copy-sql-button');
   const toggleWrapButton = document.getElementById('toggle-wrap-button');
 
-  const searchInput = document.getElementById('result-search');
-  const pageSizeSelect = document.getElementById('page-size-select');
   const resultsMeta = document.getElementById('results-meta');
   const resultsHead = document.getElementById('results-head');
   const resultsBody = document.getElementById('results-body');
@@ -39,13 +37,11 @@
   const exportJsonButton = document.getElementById('export-json-button');
 
   const state = {
-    filterText: '',
     sortColumn: -1,
     sortDirection: 'asc',
     currentPage: 1,
     pageSize: 200,
     result: null,
-    columnNamesSearchText: '',
   };
 
   function showView(kind) {
@@ -64,19 +60,10 @@
   }
 
   function resetTransientState() {
-    state.filterText = '';
     state.sortColumn = -1;
     state.sortDirection = 'asc';
     state.currentPage = 1;
     state.result = null;
-    state.columnNamesSearchText = '';
-    searchInput.value = '';
-    pageSizeSelect.value = String(state.pageSize);
-  }
-
-  function buildSearchTarget(row) {
-    const rowText = row.map((cell) => formatCellValue(cell).toLowerCase()).join(' ');
-    return state.columnNamesSearchText + ' ' + rowText;
   }
 
   function compareValues(left, right) {
@@ -107,14 +94,7 @@
     if (!state.result) {
       return [];
     }
-
-    if (!state.filterText) {
-      return state.result.rows.map((row, index) => ({ row, sourceIndex: index }));
-    }
-
-    return state.result.rows
-      .map((row, index) => ({ row, sourceIndex: index }))
-      .filter(({ row }) => buildSearchTarget(row).includes(state.filterText));
+    return state.result.rows.map((row, index) => ({ row, sourceIndex: index }));
   }
 
   function getProcessedRows() {
@@ -270,7 +250,6 @@
 
     const visibleStart = processedRows.length === 0 ? 0 : page.startIndex + 1;
     const visibleEnd = page.endIndex;
-    const filteredCount = processedRows.length;
     const fetchedCount = state.result.rows.length;
     const sortedBy = state.sortColumn >= 0
       ? ' • Sorted by ' + state.result.columns[state.sortColumn] + ' (' + state.sortDirection + ')'
@@ -278,7 +257,7 @@
 
     resultsMeta.textContent =
       'Showing ' + visibleStart.toLocaleString() + '-' + visibleEnd.toLocaleString() +
-      ' of ' + filteredCount.toLocaleString() + ' filtered row(s) from ' + fetchedCount.toLocaleString() + ' fetched row(s)' +
+      ' of ' + fetchedCount.toLocaleString() + ' fetched row(s)' +
       sortedBy;
 
     paginationStatus.textContent =
@@ -288,15 +267,14 @@
     previousPageButton.disabled = state.pageSize === -1 || state.currentPage <= 1;
     nextPageButton.disabled = state.pageSize === -1 || state.currentPage >= page.totalPages;
     copyPageButton.disabled = page.rows.length === 0;
-    exportCsvButton.disabled = filteredCount === 0;
-    exportJsonButton.disabled = filteredCount === 0;
+    exportCsvButton.disabled = fetchedCount === 0;
+    exportJsonButton.disabled = fetchedCount === 0;
 
     updateHeader();
   }
 
   function renderResults(result) {
     state.result = result;
-    state.columnNamesSearchText = result.columns.join(' ').toLowerCase();
     summaryRowCount.textContent = result.rowCount.toLocaleString();
     summaryExecutionTime.textContent = result.executionTimeMs + 'ms';
     summaryColumnCount.textContent = result.columns.length.toLocaleString();
@@ -389,28 +367,6 @@
       state.sortDirection = 'asc';
     }
 
-    state.currentPage = 1;
-    renderTable();
-  });
-
-  searchInput.addEventListener('input', (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement)) {
-      return;
-    }
-
-    state.filterText = target.value.trim().toLowerCase();
-    state.currentPage = 1;
-    renderTable();
-  });
-
-  pageSizeSelect.addEventListener('change', (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLSelectElement)) {
-      return;
-    }
-
-    state.pageSize = Number(target.value);
     state.currentPage = 1;
     renderTable();
   });
