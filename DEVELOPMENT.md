@@ -81,7 +81,8 @@ jinja:
   variables: {}
 
 extension:
-  max_rows: 10000
+  auto_preview: true
+  session_idle_timeout_seconds: 120
 ```
 
 ### 2. Create a SQL File
@@ -94,7 +95,7 @@ SELECT * FROM my_table LIMIT 10;
 
 ### 3. Execute Query
 
-- Use Command Palette: **Impyla: Execute Query (Selection or Entire Document)**
+- Use Command Palette: **Impyla: Run Query (Selection or File)**
 - Results will appear in the "Impyla Query Results" panel
 
 ### 4. Test Jinja Templates
@@ -114,7 +115,7 @@ jinja:
     limit: 50
 ```
 
-- Run **Impyla: Execute Query (Selection or Entire Document)** from Command Palette
+- Run **Impyla: Run Query (Selection or File)** from Command Palette
 - Confirm rendered SQL in the results panel
 
 ## Project Structure

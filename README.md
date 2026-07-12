@@ -41,7 +41,8 @@ jinja:
   variables: {}
 
 extension:
-  max_rows: 10000
+  auto_preview: true
+  session_idle_timeout_seconds: 120
 ```
 
 Or use the command palette: **Impyla: Create Configuration**
@@ -62,7 +63,7 @@ LIMIT 10;
 ### 4. Execute Queries
 
 - Open Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
-- Run: **Impyla: Execute Query (Selection or Entire Document)**
+- Run: **Impyla: Run Query (Selection or File)**
 
 ## Jinja2 Templates
 
@@ -123,7 +124,7 @@ WHERE event_date >= '{{ days_ago(7) }}'
 
 ## Commands
 
-- **Impyla: Execute Query (Selection or Entire Document)** - Execute selected SQL if present, otherwise execute the full SQL document
+- **Impyla: Run Query (Selection or File)** - Execute selected SQL if present, otherwise execute the full SQL document
 - **Impyla: Create Configuration** - Setup wizard for `.impyla.yml`
 - **Impyla: Show Output** - Show extension output channel
 - **Impyla: Set Global Password** - Save global password in VS Code SecretStorage
@@ -183,8 +184,18 @@ Supported mechanisms:
 
 ## Extension Settings
 
-- `impyla.maxRows` - Maximum rows to fetch (default: 10000)
 - `impyla.pythonPath` - Python executable path (default: python3)
+
+## Result Paging
+
+- Query results are fetched in lazy-loaded batches (default batch size: 100 rows)
+- As you scroll down, the extension requests the next batch from the same server-side session
+- Session idle cleanup is controlled by `.impyla.yml`:
+
+```yaml
+extension:
+  session_idle_timeout_seconds: 120
+```
 
 ## Troubleshooting
 

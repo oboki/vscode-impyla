@@ -116,7 +116,8 @@ jinja:
   variables: {}
 
 extension:
-  max_rows: 10000
+  auto_preview: true
+  session_idle_timeout_seconds: 120
 ```
 
 Config lookup order is:
@@ -140,7 +141,7 @@ LIMIT 10;
 
 1. Open `test.sql`
 2. Open Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
-3. Run: **Impyla: Execute Query (Selection or Entire Document)**
+3. Run: **Impyla: Run Query (Selection or File)**
 4. View results in the "Impyla Query Results" panel
 
 ## Advanced: Using Templates
@@ -170,7 +171,7 @@ LIMIT {{ limit }};
 
 ### 3. Execute Template
 
-Run **Impyla: Execute Query (Selection or Entire Document)** from Command Palette.
+Run **Impyla: Run Query (Selection or File)** from Command Palette.
 
 ## Troubleshooting
 
