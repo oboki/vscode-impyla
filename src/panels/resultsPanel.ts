@@ -265,8 +265,12 @@ export class ResultsViewProvider implements vscode.WebviewViewProvider {
           <p class="section-subtitle" id="rendered-sql-subtitle"></p>
         </div>
         <div class="toolbar-actions">
-          <button class="action-button secondary" id="copy-sql-button" type="button">Copy SQL</button>
-          <button class="action-button secondary" id="toggle-wrap-button" type="button" aria-pressed="false">Wrap lines</button>
+          <button class="action-button secondary icon-action-button" id="copy-sql-button" type="button" title="Copy SQL" aria-label="Copy SQL">
+            ⧉<span class="sr-only">Copy SQL</span>
+          </button>
+          <button class="action-button secondary icon-action-button" id="toggle-wrap-button" type="button" title="Toggle line wrap" aria-label="Toggle line wrap" aria-pressed="false">
+            ↩<span class="sr-only">Toggle line wrap</span>
+          </button>
         </div>
       </div>
       <pre class="sql-block" id="rendered-sql-pre"><code class="language-sql" id="rendered-sql-code"></code></pre>
@@ -276,12 +280,11 @@ export class ResultsViewProvider implements vscode.WebviewViewProvider {
       <div class="section-header">
         <div>
           <h2 class="section-title" id="results-title">Query results</h2>
-          <p class="section-subtitle">Primary data view. Sort columns, navigate pages, and export fetched rows.</p>
         </div>
         <div class="toolbar-actions">
-          <button class="action-button secondary" id="copy-page-button" type="button">Copy page</button>
-          <button class="action-button secondary" id="export-csv-button" type="button">Export CSV</button>
-          <button class="action-button secondary" id="export-json-button" type="button">Export JSON</button>
+          <button class="action-button secondary icon-action-button" id="copy-page-button" type="button" title="Copy loaded rows" aria-label="Copy loaded rows">⧉<span class="sr-only">Copy loaded rows</span></button>
+          <button class="action-button secondary icon-action-button" id="export-csv-button" type="button" title="Export CSV" aria-label="Export CSV">⇩<span class="sr-only">Export CSV</span></button>
+          <button class="action-button secondary icon-action-button" id="export-json-button" type="button" title="Export JSON" aria-label="Export JSON">{}<span class="sr-only">Export JSON</span></button>
         </div>
       </div>
 

@@ -26,7 +26,6 @@
   const toggleWrapButton = document.getElementById('toggle-wrap-button');
 
   const resultsMeta = document.getElementById('results-meta');
-  const tableContainer = document.getElementById('results-table-container');
   const resultsHead = document.getElementById('results-head');
   const resultsBody = document.getElementById('results-body');
   const emptyState = document.getElementById('empty-state');
@@ -263,11 +262,12 @@
   }
 
   function maybeRequestMoreRows() {
-    if (!tableContainer || !state.result || !state.result.hasMore || state.loadingMore) {
+    if (!state.result || !state.result.hasMore || state.loadingMore) {
       return;
     }
 
-    const remaining = tableContainer.scrollHeight - (tableContainer.scrollTop + tableContainer.clientHeight);
+    const doc = document.documentElement;
+    const remaining = doc.scrollHeight - (window.scrollY + window.innerHeight);
     if (remaining <= 120) {
       requestMoreRows();
     }
@@ -284,19 +284,16 @@
     summaryExecutionTime.textContent = result.executionTimeMs + 'ms';
     summaryColumnCount.textContent = result.columns.length.toLocaleString();
 
-    if (result.hasMore) {
-      warningBanner.hidden = false;
-      warningBanner.innerHTML =
-        'Showing first ' + result.rowCount.toLocaleString() + ' row(s). Scroll down to load the next batch of 100 rows.';
-    } else {
-      warningBanner.hidden = true;
-      warningBanner.textContent = '';
+    warningBanner.hidden = true;
+    warningBanner.textContent = '';
+    if (!result.hasMore) {
       state.loadingMore = false;
       loadMoreIndicator.hidden = true;
     }
 
     renderedSqlPre.classList.remove('is-wrapped');
-    toggleWrapButton.textContent = 'Wrap lines';
+    toggleWrapButton.innerHTML = '↩<span class="sr-only">Enable line wrap</span>';
+    toggleWrapButton.title = 'Enable line wrap';
     toggleWrapButton.setAttribute('aria-pressed', 'false');
 
     if (result.renderedSql) {
@@ -378,7 +375,7 @@
     renderTable();
   });
 
-  tableContainer.addEventListener('scroll', maybeRequestMoreRows);
+  window.addEventListener('scroll', maybeRequestMoreRows, { passive: true });
 
   copyPageButton.addEventListener('click', () => {
     const rows = getProcessedRows();
@@ -432,7 +429,10 @@
   toggleWrapButton.addEventListener('click', () => {
     renderedSqlPre.classList.toggle('is-wrapped');
     const wrapped = renderedSqlPre.classList.contains('is-wrapped');
-    toggleWrapButton.textContent = wrapped ? 'Disable wrap' : 'Wrap lines';
+    toggleWrapButton.innerHTML = wrapped
+      ? '↪<span class="sr-only">Disable line wrap</span>'
+      : '↩<span class="sr-only">Enable line wrap</span>';
+    toggleWrapButton.title = wrapped ? 'Disable line wrap' : 'Enable line wrap';
     toggleWrapButton.setAttribute('aria-pressed', wrapped ? 'true' : 'false');
   });
 
