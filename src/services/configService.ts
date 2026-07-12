@@ -171,11 +171,12 @@ export class ConfigService {
     config.jinja.variables = config.jinja.variables || {};
 
     config.extension = config.extension || {};
-    config.extension.max_rows = config.extension.max_rows || 10000;
     config.extension.auto_preview =
       config.extension.auto_preview !== undefined
         ? config.extension.auto_preview
         : true;
+    config.extension.session_idle_timeout_seconds =
+      config.extension.session_idle_timeout_seconds || 120;
 
     return true;
   }

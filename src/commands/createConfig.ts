@@ -146,8 +146,8 @@ jinja:
   variables: {}
 
 extension:
-  max_rows: 10000
   auto_preview: true
+  session_idle_timeout_seconds: 120
 `;
 
   // Write to file

@@ -65,7 +65,15 @@ def execute_query(config: Dict[str, Any]) -> Dict[str, Any]:
 
     connection_config = config["connection"]
     sql = config["sql"]
-    max_rows = config.get("max_rows", 10000)
+    page_size = config.get("page_size", 100)
+
+    try:
+        page_size = int(page_size)
+    except Exception:
+        page_size = 100
+
+    if page_size <= 0:
+        page_size = 100
 
     conn = None
     cursor = None
@@ -107,11 +115,11 @@ def execute_query(config: Dict[str, Any]) -> Dict[str, Any]:
         has_more = False
 
         if cursor.description:  # Query returns results
-            for row in cursor.fetchmany(max_rows):
+            for row in cursor.fetchmany(page_size):
                 rows.append([to_json_safe(cell) for cell in row])
                 row_count += 1
 
-                if row_count >= max_rows:
+                if row_count >= page_size:
                     # Check if there are more rows
                     try:
                         next_row = cursor.fetchone()

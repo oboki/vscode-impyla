@@ -80,7 +80,7 @@ Use this checklist to verify all extension functionality works correctly.
 ### Simple Query
 - [ ] Create `test.sql` with simple SELECT
 - [ ] Open Command Palette
-- [ ] Run command "Impyla: Execute Query (Selection or Entire Document)"
+- [ ] Run command "Impyla: Run Query (Selection or File)"
 - [ ] Progress notification appears
 - [ ] Results panel opens
 - [ ] Results displayed in table
@@ -91,7 +91,7 @@ Use this checklist to verify all extension functionality works correctly.
 ### Execute Selected
 - [ ] Select portion of SQL
 - [ ] Open Command Palette
-- [ ] Run command "Impyla: Execute Query (Selection or Entire Document)"
+- [ ] Run command "Impyla: Run Query (Selection or File)"
 - [ ] Only selected SQL executes
 - [ ] Results displayed correctly
 
@@ -121,10 +121,11 @@ Use this checklist to verify all extension functionality works correctly.
 - [ ] No error popup
 
 ### Large Result Set
-- [ ] Execute query returning > max_rows
-- [ ] Results limited to max_rows
-- [ ] "has_more" indicator shown
-- [ ] Warning about limited results
+- [ ] Execute query returning many rows (e.g., > 300)
+- [ ] Initial batch loads quickly (first 100 rows)
+- [ ] Scrolling near bottom requests and appends next batch
+- [ ] Additional batches load from the same session
+- [ ] When no more rows exist, lazy loading stops
 
 ## Template Testing
 
@@ -134,7 +135,7 @@ Use this checklist to verify all extension functionality works correctly.
 
 ### Template Execution
 - [ ] Open Command Palette
-- [ ] Run command "Impyla: Execute Query (Selection or Entire Document)"
+- [ ] Run command "Impyla: Run Query (Selection or File)"
 - [ ] Query executes with rendered SQL
 - [ ] No errors
 
@@ -208,11 +209,11 @@ Use this checklist to verify all extension functionality works correctly.
 
 ## Settings Testing
 
-### max_rows Setting
-- [ ] Set `impyla.maxRows` to 5
-- [ ] Execute query with 10+ rows
-- [ ] Only 5 rows returned
-- [ ] has_more flag set
+### Session Idle Timeout Setting
+- [ ] Set `extension.session_idle_timeout_seconds` to a small value (e.g., 10)
+- [ ] Execute query with multiple lazy-load batches
+- [ ] Wait longer than timeout without loading more rows
+- [ ] Next lazy-load request returns session expired guidance
 
 ### pythonPath Setting
 - [ ] Set custom python path
@@ -270,7 +271,7 @@ Use this checklist to verify all extension functionality works correctly.
 ## Performance Testing
 
 ### Large Results
-- [ ] Execute query returning max_rows (10000)
+- [ ] Execute query returning many rows (e.g., 10000+)
 - [ ] Results load without freeze
 - [ ] UI remains responsive
 

@@ -4,20 +4,21 @@ All notable changes to the "Impyla" extension will be documented in this file.
 
 ## [Unreleased]
 
-## [0.1.2] - 2026-03-08
-
 ### Changed
 
-- Added `secret://global` password pointer support backed by VS Code SecretStorage.
-- Added commands: `impyla.setGlobalPassword`, `impyla.clearGlobalPassword`.
-- Allowed plaintext `connection.password` while recommending `secret://global`.
-- Removed environment variable expansion (`${...}`) for config values.
-- Added configuration fallback lookup to `~/.impyla.yml` when workspace config is absent.
-- Improved `TSocket read 0 bytes` error message with authentication review guidance and password update action.
-- Simplified Python interpreter resolution: `impyla.pythonPath` now takes priority, with PATH-based fallback.
-- Removed deprecated config field `extension.python_path` from schema/templates/docs.
-- Improved dependency check/install flow to avoid stale in-progress lock behavior.
-- Standardized runtime UI notifications/prompts/messages to English.
+- None yet.
+
+## [0.2.0] - 2026-07-12
+### Changed
+
+- Added persistent query session paging with lazy loading and session idle timeout handling.
+- Added `Impyla: Preview Rendered SQL` command for render-only preview in the results panel.
+- Simplified query panel UX for table-first workflow and removed unnecessary controls.
+- Separated execution and rendering flows: Run Query focuses on results, Preview Rendered SQL focuses on rendered SQL.
+- Improved output diagnostics with run-scoped sections and optional server metadata logging.
+- Removed deprecated `max_rows` usage from config/runtime/docs in favor of session-based paging.
+- Standardized credential environment variable examples from `IMPALA_PASSWORD` to `IMPYLA_PASSWORD` (and `IMPYLA_USER`) across docs and setup wizard placeholders.
+- Clarified environment variable refresh behavior in documentation: VS Code window reload is required after external environment changes.
 
 ## [0.1.1] - 2026-03-06
 
@@ -89,7 +90,6 @@ All notable changes to the "Impyla" extension will be documented in this file.
 - `impyla.showOutput` - Show extension output
 
 #### Configuration Options
-- `impyla.maxRows` - Maximum rows to fetch (default: 10000)
 - `impyla.autoPreview` - Auto-preview templates (default: true)
 - `impyla.pythonPath` - Python executable path (default: python3)
 

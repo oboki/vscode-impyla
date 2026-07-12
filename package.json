@@ -2,7 +2,7 @@
   "name": "impyla",
   "displayName": "impyla",
   "description": "VSCode extension to execute Impala SQL queries with Jinja2 support.",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "publisher": "oboki",
   "icon": "icon.png",
   "engines": {
@@ -13,18 +13,41 @@
     "Data Science"
   ],
   "activationEvents": [
-    "onLanguage:sql"
+    "onLanguage:sql",
+    "onView:impyla.resultsView"
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "impylaPanel",
+          "title": "Impyla",
+          "icon": "media/impyla-panel.svg"
+        }
+      ]
+    },
+    "views": {
+      "impylaPanel": [
+        {
+          "id": "impyla.resultsView",
+          "name": "Query Results",
+          "type": "webview"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "impyla.executeQuery",
-        "title": "Impyla: Execute Query (Selection or Entire Document)"
+        "title": "Impyla: Run Query (Selection or File)"
       },
       {
         "command": "impyla.createConfig",
         "title": "Impyla: Create Configuration"
+      },
+      {
+        "command": "impyla.previewRenderedSql",
+        "title": "Impyla: Preview Rendered SQL"
       },
       {
         "command": "impyla.showOutput",
@@ -42,11 +65,6 @@
     "configuration": {
       "title": "Impyla",
       "properties": {
-        "impyla.maxRows": {
-          "type": "number",
-          "default": 10000,
-          "description": "Maximum rows to fetch from query results"
-        },
         "impyla.pythonPath": {
           "type": "string",
           "default": "python3",
