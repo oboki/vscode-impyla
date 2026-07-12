@@ -39,7 +39,7 @@
     "commands": [
       {
         "command": "impyla.executeQuery",
-        "title": "Impyla: Execute Query (Selection or Entire Document)"
+        "title": "Impyla: Run Query (Selection or File)"
       },
       {
         "command": "impyla.createConfig",
@@ -61,11 +61,6 @@
     "configuration": {
       "title": "Impyla",
       "properties": {
-        "impyla.maxRows": {
-          "type": "number",
-          "default": 10000,
-          "description": "Maximum rows to fetch from query results"
-        },
         "impyla.pythonPath": {
           "type": "string",
           "default": "python3",

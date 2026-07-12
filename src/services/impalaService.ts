@@ -21,7 +21,6 @@ type ServerRequest =
       connection: ConnectionConfig;
       sql: string;
       page_size?: number;
-      max_rows: number;
       idle_timeout_seconds?: number;
     }
   | {
@@ -128,7 +127,6 @@ export class ImpalaService implements vscode.Disposable {
         connection: resolvedConnection.connection,
         sql,
         page_size: paging?.pageSize,
-        max_rows: config.extension?.max_rows || 10000,
         idle_timeout_seconds: paging?.idleTimeoutSeconds,
       });
 

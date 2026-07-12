@@ -144,16 +144,15 @@ def handle_execute(
         return error_response(request_id, "Missing connection or SQL in request")
 
     page_size = request.get("page_size")
-    max_rows = int(request.get("max_rows", 10000))
     idle_timeout_seconds = int(request.get("idle_timeout_seconds", 120))
 
     try:
-        page_size = int(page_size) if page_size is not None else max_rows
+        page_size = int(page_size) if page_size is not None else 100
     except Exception:
-        page_size = max_rows
+        page_size = 100
 
     if page_size <= 0:
-        page_size = max_rows
+        page_size = 100
 
     conn = None
     cursor = None

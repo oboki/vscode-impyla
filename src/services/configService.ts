@@ -171,7 +171,6 @@ export class ConfigService {
     config.jinja.variables = config.jinja.variables || {};
 
     config.extension = config.extension || {};
-    config.extension.max_rows = config.extension.max_rows || 10000;
     config.extension.auto_preview =
       config.extension.auto_preview !== undefined
         ? config.extension.auto_preview

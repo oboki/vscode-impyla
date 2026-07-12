@@ -26,7 +26,6 @@ export interface JinjaConfig {
 }
 
 export interface ExtensionConfig {
-  max_rows?: number;
   auto_preview?: boolean;
   session_idle_timeout_seconds?: number;
 }
@@ -50,9 +49,7 @@ export interface JinjaRenderResponse {
 export interface QueryExecutionRequest {
   connection: ConnectionConfig;
   sql: string;
-  max_rows: number;
   page_size?: number;
-  offset?: number;
 }
 
 export interface QueryExecutionResponse {
