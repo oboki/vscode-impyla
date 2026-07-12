@@ -1,274 +1,324 @@
 import * as vscode from "vscode";
 import * as path from "path";
-import * as fs from "fs";
 import { QueryResult } from "../types";
 
-/**
- * Panel for displaying query results in a webview
- */
-export class ResultsPanel {
-  public static currentPanel: ResultsPanel | undefined;
-  private readonly panel: vscode.WebviewPanel;
-  private disposables: vscode.Disposable[] = [];
-
-  private constructor(
-    panel: vscode.WebviewPanel,
-    private extensionPath: string,
-  ) {
-    this.panel = panel;
-
-    // Set initial HTML content
-    this.panel.webview.html = this.getLoadingHtml();
-
-    // Handle panel disposal
-    this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
-  }
-
-  /**
-   * Create or show the results panel
-   */
-  public static createOrShow(extensionPath: string): ResultsPanel {
-    const column = vscode.window.activeTextEditor
-      ? vscode.ViewColumn.Beside
-      : vscode.ViewColumn.One;
-
-    // If we already have a panel, show it
-    if (ResultsPanel.currentPanel) {
-      ResultsPanel.currentPanel.panel.reveal(column, true);
-      return ResultsPanel.currentPanel;
+type ResultsPanelMessage =
+  | {
+      type: "webviewReady";
     }
-
-    // Otherwise, create a new panel
-    const panel = vscode.window.createWebviewPanel(
-      "impylaResults",
-      "Impyla Query Results",
-      {
-        viewColumn: column,
-        preserveFocus: true,
-      },
-      {
-        enableScripts: true,
-        localResourceRoots: [
-          vscode.Uri.file(path.join(extensionPath, "media")),
-          vscode.Uri.file(path.join(extensionPath, "node_modules")),
-        ],
-      },
-    );
-
-    ResultsPanel.currentPanel = new ResultsPanel(panel, extensionPath);
-    return ResultsPanel.currentPanel;
-  }
-
-  /**
-   * Show loading state
-   */
-  public showLoading(message: string = "Executing query...") {
-    this.panel.webview.html = this.getLoadingHtml(message);
-  }
-
-  /**
-   * Show error state
-   */
-  public showError(error: string, errorType?: string) {
-    this.panel.webview.html = this.getErrorHtml(error, errorType);
-  }
-
-  /**
-   * Show query results
-   */
-  public showResults(result: QueryResult) {
-    this.panel.webview.html = this.getResultsHtml(result);
-  }
-
-  /**
-   * Dispose the panel
-   */
-  public dispose() {
-    ResultsPanel.currentPanel = undefined;
-
-    this.panel.dispose();
-
-    while (this.disposables.length) {
-      const disposable = this.disposables.pop();
-      if (disposable) {
-        disposable.dispose();
-      }
+  | {
+      type: "copyToClipboard";
+      content: string;
+      label?: string;
     }
-  }
-
-  /**
-   * Get HTML for loading state
-   */
-  private getLoadingHtml(message: string = "Executing query..."): string {
-    const cssPath = this.panel.webview.asWebviewUri(
-      vscode.Uri.file(path.join(this.extensionPath, "media", "webview.css")),
-    );
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Query Results</title>
-  <link rel="stylesheet" href="${cssPath}">
-</head>
-<body>
-  <div class="loading">
-    <div class="spinner"></div>
-    <p>${this.escapeHtml(message)}</p>
-  </div>
-</body>
-</html>`;
-  }
-
-  /**
-   * Get HTML for error state
-   */
-  private getErrorHtml(error: string, errorType?: string): string {
-    const cssPath = this.panel.webview.asWebviewUri(
-      vscode.Uri.file(path.join(this.extensionPath, "media", "webview.css")),
-    );
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Query Error</title>
-  <link rel="stylesheet" href="${cssPath}">
-</head>
-<body>
-  <div class="error">
-    ${errorType ? `<div class="error-type">${this.escapeHtml(errorType)}</div>` : ""}
-    <div class="error-message">${this.escapeHtml(error)}</div>
-  </div>
-</body>
-</html>`;
-  }
-
-  /**
-   * Get HTML for results display
-   */
-  private getResultsHtml(result: QueryResult): string {
-    const cssPath = this.panel.webview.asWebviewUri(
-      vscode.Uri.file(path.join(this.extensionPath, "media", "webview.css")),
-    );
-
-    const highlightCssPath = this.panel.webview.asWebviewUri(
-      vscode.Uri.file(
-        path.join(this.extensionPath, "node_modules", "highlight.js", "styles", "vs2015.min.css")
-      )
-    );
-
-    // Inline highlight.js for offline/closed network environments
-    const highlightCorePath = path.join(this.extensionPath, "node_modules", "highlight.js", "lib", "core.js");
-    const highlightSqlPath = path.join(this.extensionPath, "node_modules", "highlight.js", "lib", "languages", "sql.js");
-    const highlightCoreJs = fs.readFileSync(highlightCorePath, "utf8");
-    const highlightSqlJs = fs.readFileSync(highlightSqlPath, "utf8");
-
-    const rowsHtml = result.rows
-      .map((row) => {
-        const cellsHtml = row
-          .map((cell) => `<td>${this.escapeHtml(this.formatCell(cell))}</td>`)
-          .join("");
-        return `<tr>${cellsHtml}</tr>`;
-      })
-      .join("");
-
-    const renderedSqlHtml = result.renderedSql
-      ? `<details class="rendered-sql">
-          <summary><h3>Rendered SQL:</h3></summary>
-          <pre><code class="language-sql">${this.escapeHtml(result.renderedSql)}</code></pre>
-         </details>`
-      : "";
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${this.panel.webview.cspSource} 'unsafe-inline'; script-src 'unsafe-inline';">
-  <title>Query Results</title>
-  <link rel="stylesheet" href="${cssPath}">
-  <link rel="stylesheet" href="${highlightCssPath}">
-</head>
-<body>
-  <details class="info-section">
-    <summary><h3>Query Info:</h3></summary>
-    <div class="info-content">
-      <div class="info-item">
-        <span class="label">Rows:</span>
-        <span class="value">${result.rowCount}${result.hasMore ? " (limited)" : ""}</span>
-      </div>
-      <div class="info-item">
-        <span class="label">Execution Time:</span>
-        <span class="value">${result.executionTimeMs}ms</span>
-      </div>
-    </div>
-  </details>
-  
-  ${renderedSqlHtml}
-  
-  <details class="results-section" open>
-    <summary><h3>Result:</h3></summary>
-    <div class="table-container">
-    <table>
-      <thead>
-        <tr>
-          ${result.columns.map((col) => `<th>${this.escapeHtml(col)}</th>`).join("")}
-        </tr>
-      </thead>
-      <tbody>
-        ${rowsHtml}
-      </tbody>
-    </table>
-    </div>
-  </details>
-
-  <script>
-    (function() {
-      // Create module system for CommonJS compatibility
-      let module = { exports: {} };
-      let exports = module.exports;
-
-      ${highlightCoreJs}
-      const hljs = module.exports;
-
-      module = { exports: {} };
-      exports = module.exports;
-
-      ${highlightSqlJs}
-      const sqlLang = module.exports;
-
-      hljs.registerLanguage('sql', sqlLang);
-      hljs.highlightAll();
-    })();
-  </script>
-</body>
-</html>`;
-  }
-
-  /**
-   * Format a cell value for display
-   */
-  private formatCell(value: any): string {
-    if (value === null || value === undefined) {
-      return "NULL";
-    }
-    return String(value);
-  }
-
-  /**
-   * Escape HTML special characters
-   */
-  private escapeHtml(text: string): string {
-    const map: { [key: string]: string } = {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#039;",
+  | {
+      type: "exportData";
+      content: string;
+      format: "csv" | "tsv" | "json";
+      defaultFileName: string;
     };
-    return text.replace(/[&<>"']/g, (m) => map[m]);
+
+type ResultsViewState =
+  | { kind: "welcome" }
+  | { kind: "loading"; message: string }
+  | { kind: "error"; error: string; errorType?: string; line?: number }
+  | { kind: "results"; result: QueryResult };
+
+type ResultsViewUpdateMessage = {
+  type: "updateState";
+  state: ResultsViewState;
+};
+
+export class ResultsViewProvider implements vscode.WebviewViewProvider {
+  public static readonly viewId = "impyla.resultsView";
+  private static readonly containerCommand = "workbench.view.extension.impylaPanel";
+
+  private webviewView: vscode.WebviewView | undefined;
+  private currentState: ResultsViewState = { kind: "welcome" };
+  private isWebviewReady = false;
+  private pendingReveal = false;
+  private readonly disposables: vscode.Disposable[] = [];
+
+  constructor(private readonly extensionPath: string) {}
+
+  public resolveWebviewView(webviewView: vscode.WebviewView): void {
+    this.webviewView = webviewView;
+    this.isWebviewReady = false;
+
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [vscode.Uri.file(path.join(this.extensionPath, "media"))],
+    };
+
+    webviewView.webview.onDidReceiveMessage(
+      (message: ResultsPanelMessage) => {
+        void this.handleWebviewMessage(message);
+      },
+      null,
+      this.disposables,
+    );
+
+    webviewView.onDidChangeVisibility(
+      () => {
+        if (webviewView.visible) {
+          void this.postStateUpdate();
+        }
+      },
+      null,
+      this.disposables,
+    );
+
+    webviewView.webview.html = this.getShellHtml();
+
+    if (this.pendingReveal) {
+      this.pendingReveal = false;
+      webviewView.show(true);
+    }
+  }
+
+  public async showLoading(message: string = "Executing query..."): Promise<void> {
+    this.currentState = { kind: "loading", message };
+    await this.reveal();
+    await this.postStateUpdate();
+  }
+
+  public async showError(
+    error: string,
+    errorType?: string,
+    line?: number,
+  ): Promise<void> {
+    this.currentState = { kind: "error", error, errorType, line };
+    await this.reveal();
+    await this.postStateUpdate();
+  }
+
+  public async showResults(result: QueryResult): Promise<void> {
+    this.currentState = { kind: "results", result };
+    await this.reveal();
+    await this.postStateUpdate();
+  }
+
+  private async reveal(): Promise<void> {
+    if (this.webviewView) {
+      this.webviewView.show(true);
+      return;
+    }
+
+    this.pendingReveal = true;
+
+    try {
+      await vscode.commands.executeCommand(ResultsViewProvider.containerCommand);
+      await vscode.commands.executeCommand(`${ResultsViewProvider.viewId}.focus`);
+    } catch {
+      // The view will render current state after the user opens it manually.
+    }
+  }
+
+  private async postStateUpdate(): Promise<void> {
+    if (!this.webviewView || !this.isWebviewReady) {
+      return;
+    }
+
+    const message: ResultsViewUpdateMessage = {
+      type: "updateState",
+      state: this.currentState,
+    };
+
+    await this.webviewView.webview.postMessage(message);
+  }
+
+  private async handleWebviewMessage(message: ResultsPanelMessage): Promise<void> {
+    if (!message || typeof message !== "object" || !("type" in message)) {
+      return;
+    }
+
+    if (message.type === "webviewReady") {
+      this.isWebviewReady = true;
+      await this.postStateUpdate();
+      return;
+    }
+
+    if (message.type === "copyToClipboard") {
+      await vscode.env.clipboard.writeText(message.content);
+      vscode.window.setStatusBarMessage(
+        message.label || "Copied results to clipboard",
+        2500,
+      );
+      return;
+    }
+
+    const filtersByFormat: Record<"csv" | "tsv" | "json", Record<string, string[]>> = {
+      csv: { CSV: ["csv"] },
+      tsv: { TSV: ["tsv"] },
+      json: { JSON: ["json"] },
+    };
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri;
+    const defaultUri = workspaceRoot
+      ? vscode.Uri.joinPath(workspaceRoot, message.defaultFileName)
+      : undefined;
+    const saveUri = await vscode.window.showSaveDialog({
+      defaultUri,
+      filters: filtersByFormat[message.format],
+      saveLabel: "Export Query Results",
+    });
+
+    if (!saveUri) {
+      return;
+    }
+
+    await vscode.workspace.fs.writeFile(
+      saveUri,
+      Buffer.from(message.content, "utf8"),
+    );
+
+    vscode.window.showInformationMessage(
+      `Query results exported to ${path.basename(saveUri.fsPath)}`,
+    );
+  }
+
+  private getShellHtml(): string {
+    const cssPath = this.getWebviewResourceUri("media", "webview.css");
+    const webviewJsPath = this.getWebviewResourceUri("media", "webview.js");
+    const cspSource = this.getCspSource();
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${cspSource} 'unsafe-inline'; script-src ${cspSource};">
+  <title>Query Results</title>
+  <link rel="stylesheet" href="${cssPath}">
+</head>
+<body>
+  <section class="panel-section" id="welcome-view" aria-labelledby="results-welcome-title">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title" id="results-welcome-title">Query Results</h2>
+        <p class="section-subtitle">Run "Impyla: Execute Query" to populate this panel with results, errors, and rendered SQL.</p>
+      </div>
+    </div>
+    <div class="empty-state">This panel stays docked with Output and Terminal so you can review results without opening a separate editor tab.</div>
+  </section>
+
+  <section id="loading-view" hidden>
+    <div class="loading" role="status" aria-live="polite">
+      <div class="spinner"></div>
+      <p id="loading-message">Executing query...</p>
+    </div>
+  </section>
+
+  <section class="error" id="error-view" role="alert" aria-live="assertive" hidden>
+    <div class="error-header">
+      <div>
+        <h2 class="section-title">Query failed</h2>
+        <p class="section-subtitle">Review the error details below and the Impyla output channel for additional context.</p>
+      </div>
+      <button class="action-button secondary" id="copy-error-button" type="button">Copy details</button>
+    </div>
+    <div class="error-meta">
+      <span class="badge error-badge" id="error-type-badge" hidden></span>
+      <span class="badge" id="error-line-badge" hidden></span>
+    </div>
+    <pre class="error-message" id="error-message"></pre>
+  </section>
+
+  <section id="results-view" hidden>
+    <section class="summary-grid" aria-label="Query summary">
+      <article class="summary-card">
+        <span class="summary-label">Rows fetched</span>
+        <strong class="summary-value" id="summary-row-count">0</strong>
+      </article>
+      <article class="summary-card">
+        <span class="summary-label">Execution time</span>
+        <strong class="summary-value" id="summary-execution-time">0ms</strong>
+      </article>
+      <article class="summary-card">
+        <span class="summary-label">Columns</span>
+        <strong class="summary-value" id="summary-column-count">0</strong>
+      </article>
+    </section>
+
+    <section class="warning-banner" id="warning-banner" role="status" aria-live="polite" hidden></section>
+
+    <section class="panel-section rendered-sql" id="rendered-sql-section" aria-labelledby="rendered-sql-title" hidden>
+      <div class="section-header">
+        <div>
+          <h2 class="section-title" id="rendered-sql-title">Rendered SQL</h2>
+          <p class="section-subtitle" id="rendered-sql-subtitle"></p>
+        </div>
+        <div class="toolbar-actions">
+          <button class="action-button secondary" id="copy-sql-button" type="button">Copy SQL</button>
+          <button class="action-button secondary" id="toggle-wrap-button" type="button" aria-pressed="false">Wrap lines</button>
+        </div>
+      </div>
+      <pre class="sql-block" id="rendered-sql-pre"><code class="language-sql" id="rendered-sql-code"></code></pre>
+    </section>
+
+    <section class="panel-section results-panel" aria-labelledby="results-title">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title" id="results-title">Query results</h2>
+          <p class="section-subtitle">Filter, sort, page through fetched rows, or export the current filtered result set.</p>
+        </div>
+        <div class="toolbar-actions">
+          <button class="action-button secondary" id="copy-page-button" type="button">Copy page</button>
+          <button class="action-button secondary" id="export-csv-button" type="button">Export CSV</button>
+          <button class="action-button secondary" id="export-json-button" type="button">Export JSON</button>
+        </div>
+      </div>
+
+      <div class="results-toolbar" role="toolbar" aria-label="Results controls">
+        <label class="search-input-wrapper">
+          <span class="sr-only">Search results</span>
+          <input id="result-search" class="search-input" type="search" placeholder="Search rows or column names" aria-label="Search rows or column names">
+        </label>
+        <label class="page-size-control">
+          <span>Rows per page</span>
+          <select id="page-size-select" aria-label="Rows per page">
+            <option value="100">100</option>
+            <option value="200" selected>200</option>
+            <option value="500">500</option>
+            <option value="1000">1000</option>
+            <option value="-1">All fetched rows</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="results-meta" id="results-meta" aria-live="polite"></div>
+      <div class="empty-state" id="empty-state" hidden>No rows match the current filter.</div>
+
+      <div class="table-container">
+        <table id="results-table">
+          <caption class="sr-only">Impyla query results</caption>
+          <thead id="results-head"></thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+
+      <div class="pagination-bar" aria-label="Results pagination">
+        <button class="action-button secondary" id="previous-page-button" type="button">Previous</button>
+        <span class="pagination-status" id="pagination-status">Page 1 of 1</span>
+        <button class="action-button secondary" id="next-page-button" type="button">Next</button>
+      </div>
+    </section>
+  </section>
+  <script src="${webviewJsPath}"></script>
+</body>
+</html>`;
+  }
+
+  private getWebviewResourceUri(...segments: string[]): string {
+    if (!this.webviewView) {
+      return "";
+    }
+
+    return this.webviewView.webview.asWebviewUri(
+      vscode.Uri.file(path.join(this.extensionPath, ...segments)),
+    ).toString();
+  }
+
+  private getCspSource(): string {
+    return this.webviewView?.webview.cspSource ?? "";
   }
 }

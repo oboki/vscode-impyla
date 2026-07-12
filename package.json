@@ -13,10 +13,29 @@
     "Data Science"
   ],
   "activationEvents": [
-    "onLanguage:sql"
+    "onLanguage:sql",
+    "onView:impyla.resultsView"
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "impylaPanel",
+          "title": "Impyla",
+          "icon": "media/impyla-panel.svg"
+        }
+      ]
+    },
+    "views": {
+      "impylaPanel": [
+        {
+          "id": "impyla.resultsView",
+          "name": "Query Results",
+          "type": "webview"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "impyla.executeQuery",

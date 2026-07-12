@@ -3,7 +3,7 @@ import { ConfigService } from "../services/configService";
 import { JinjaService } from "../services/jinjaService";
 import { ImpalaService } from "../services/impalaService";
 import { PythonEnvironmentService } from "../services/pythonEnvironmentService";
-import { ResultsPanel } from "../panels/resultsPanel";
+import { ResultsViewProvider } from "../panels/resultsPanel";
 
 const GLOBAL_PASSWORD_POINTER = "secret://global";
 
@@ -15,8 +15,8 @@ export async function executeQueryCommand(
   jinjaService: JinjaService,
   impalaService: ImpalaService,
   pythonService: PythonEnvironmentService,
+  resultsViewProvider: ResultsViewProvider,
   outputChannel: vscode.OutputChannel,
-  extensionPath: string,
 ): Promise<void> {
   // Validation
   if (!configService.isConfigLoaded()) {
@@ -63,12 +63,16 @@ export async function executeQueryCommand(
     return;
   }
 
+  // Create/show results panel early so preparation and template errors are visible in-panel
+  await resultsViewProvider.showLoading("Preparing query...");
+
   // Process Jinja template if detected
   let processedSql = sqlContent;
   let renderedSql: string | undefined;
 
   if (jinjaService.hasJinjaSyntax(sqlContent)) {
     outputChannel.appendLine("Jinja syntax detected, rendering template...");
+    await resultsViewProvider.showLoading("Rendering Jinja template...");
 
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(
       editor.document.uri,
@@ -91,6 +95,11 @@ export async function executeQueryCommand(
       const errorMsg = renderResult.line
         ? `Template error at line ${renderResult.line}: ${renderResult.error}`
         : `Template error: ${renderResult.error}`;
+      await resultsViewProvider.showError(
+        errorMsg,
+        "TemplateError",
+        renderResult.line,
+      );
       vscode.window.showErrorMessage(errorMsg);
       outputChannel.appendLine(errorMsg);
       return;
@@ -101,9 +110,7 @@ export async function executeQueryCommand(
     outputChannel.appendLine("Template rendered successfully");
   }
 
-  // Create/show results panel
-  const resultsPanel = ResultsPanel.createOrShow(extensionPath);
-  resultsPanel.showLoading("Executing query...");
+  await resultsViewProvider.showLoading("Executing query...");
 
   // Execute query with cancellation support
   const result = await vscode.window.withProgress(
@@ -123,12 +130,12 @@ export async function executeQueryCommand(
     if (renderedSql) {
       queryResult.renderedSql = renderedSql;
     }
-    resultsPanel.showResults(queryResult);
+    await resultsViewProvider.showResults(queryResult);
     vscode.window.showInformationMessage(
       `Query executed successfully: ${queryResult.rowCount} rows in ${queryResult.executionTimeMs}ms`,
     );
   } else {
-    resultsPanel.showError(result.error, result.errorType);
+    await resultsViewProvider.showError(result.error, result.errorType);
 
     const configuredPassword = configService.getConfig()?.connection.password;
     const usesGlobalSecretPointer =

@@ -9,12 +9,14 @@ import {
   clearGlobalPasswordCommand,
   setGlobalPasswordCommand,
 } from "./commands/manageGlobalPassword";
+import { ResultsViewProvider } from "./panels/resultsPanel";
 
 let outputChannel: vscode.OutputChannel;
 let configService: ConfigService;
 let pythonService: PythonEnvironmentService;
 let jinjaService: JinjaService;
 let impalaService: ImpalaService;
+let resultsViewProvider: ResultsViewProvider;
 let configPromptShown = false;
 
 /**
@@ -40,6 +42,19 @@ export async function activate(context: vscode.ExtensionContext) {
     context.secrets,
     outputChannel,
     context.extensionPath,
+  );
+  resultsViewProvider = new ResultsViewProvider(context.extensionPath);
+
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      ResultsViewProvider.viewId,
+      resultsViewProvider,
+      {
+        webviewOptions: {
+          retainContextWhenHidden: true,
+        },
+      },
+    ),
   );
 
   // Check Python availability
@@ -107,8 +122,8 @@ export async function activate(context: vscode.ExtensionContext) {
         jinjaService,
         impalaService,
         pythonService,
+        resultsViewProvider,
         outputChannel,
-        context.extensionPath,
       );
     }),
   );
