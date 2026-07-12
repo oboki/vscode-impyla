@@ -26,12 +26,11 @@
   const toggleWrapButton = document.getElementById('toggle-wrap-button');
 
   const resultsMeta = document.getElementById('results-meta');
+  const tableContainer = document.getElementById('results-table-container');
   const resultsHead = document.getElementById('results-head');
   const resultsBody = document.getElementById('results-body');
   const emptyState = document.getElementById('empty-state');
-  const paginationStatus = document.getElementById('pagination-status');
-  const previousPageButton = document.getElementById('previous-page-button');
-  const nextPageButton = document.getElementById('next-page-button');
+  const loadMoreIndicator = document.getElementById('load-more-indicator');
   const copyPageButton = document.getElementById('copy-page-button');
   const exportCsvButton = document.getElementById('export-csv-button');
   const exportJsonButton = document.getElementById('export-json-button');
@@ -39,9 +38,9 @@
   const state = {
     sortColumn: -1,
     sortDirection: 'asc',
-    currentPage: 1,
-    pageSize: 200,
     result: null,
+    loadingMore: false,
+    lastLoadRequestedOffset: -1,
   };
 
   function showView(kind) {
@@ -62,8 +61,10 @@
   function resetTransientState() {
     state.sortColumn = -1;
     state.sortDirection = 'asc';
-    state.currentPage = 1;
     state.result = null;
+    state.loadingMore = false;
+    state.lastLoadRequestedOffset = -1;
+    loadMoreIndicator.hidden = true;
   }
 
   function compareValues(left, right) {
@@ -90,15 +91,12 @@
     });
   }
 
-  function getFilteredRows() {
+  function getProcessedRows() {
     if (!state.result) {
       return [];
     }
-    return state.result.rows.map((row, index) => ({ row, sourceIndex: index }));
-  }
 
-  function getProcessedRows() {
-    const rows = getFilteredRows();
+    const rows = state.result.rows.map((row, index) => ({ row, sourceIndex: index }));
 
     if (state.sortColumn >= 0) {
       rows.sort((left, right) => {
@@ -111,29 +109,6 @@
     }
 
     return rows;
-  }
-
-  function getPageSlice(processedRows) {
-    if (state.pageSize === -1) {
-      return {
-        startIndex: 0,
-        endIndex: processedRows.length,
-        rows: processedRows,
-        totalPages: 1,
-      };
-    }
-
-    const totalPages = Math.max(1, Math.ceil(processedRows.length / state.pageSize));
-    state.currentPage = Math.min(state.currentPage, totalPages);
-    const startIndex = (state.currentPage - 1) * state.pageSize;
-    const endIndex = Math.min(startIndex + state.pageSize, processedRows.length);
-
-    return {
-      startIndex,
-      endIndex,
-      rows: processedRows.slice(startIndex, endIndex),
-      totalPages,
-    };
   }
 
   function serializeDelimited(rows, delimiter) {
@@ -218,14 +193,13 @@
     }
 
     const processedRows = getProcessedRows();
-    const page = getPageSlice(processedRows);
     const tableFragment = document.createDocumentFragment();
 
-    page.rows.forEach(({ row }, index) => {
+    processedRows.forEach(({ row }, index) => {
       const tr = document.createElement('tr');
       const rowNumber = document.createElement('td');
       rowNumber.className = 'row-number-cell';
-      rowNumber.textContent = String(page.startIndex + index + 1);
+      rowNumber.textContent = String(index + 1);
       tr.appendChild(rowNumber);
 
       row.forEach((cell) => {
@@ -248,8 +222,8 @@
     resultsBody.replaceChildren(tableFragment);
     emptyState.hidden = processedRows.length > 0;
 
-    const visibleStart = processedRows.length === 0 ? 0 : page.startIndex + 1;
-    const visibleEnd = page.endIndex;
+    const visibleStart = processedRows.length === 0 ? 0 : 1;
+    const visibleEnd = processedRows.length;
     const fetchedCount = state.result.rows.length;
     const sortedBy = state.sortColumn >= 0
       ? ' • Sorted by ' + state.result.columns[state.sortColumn] + ' (' + state.sortDirection + ')'
@@ -260,21 +234,52 @@
       ' of ' + fetchedCount.toLocaleString() + ' fetched row(s)' +
       sortedBy;
 
-    paginationStatus.textContent =
-      state.pageSize === -1
-        ? 'All fetched rows shown'
-        : 'Page ' + state.currentPage + ' of ' + page.totalPages;
-    previousPageButton.disabled = state.pageSize === -1 || state.currentPage <= 1;
-    nextPageButton.disabled = state.pageSize === -1 || state.currentPage >= page.totalPages;
-    copyPageButton.disabled = page.rows.length === 0;
+    copyPageButton.disabled = processedRows.length === 0;
     exportCsvButton.disabled = fetchedCount === 0;
     exportJsonButton.disabled = fetchedCount === 0;
+    loadMoreIndicator.hidden = !(state.loadingMore && state.result.hasMore);
 
     updateHeader();
   }
 
+  function requestMoreRows() {
+    if (!state.result || !state.result.hasMore || state.loadingMore) {
+      return;
+    }
+
+    const offset = state.result.rows.length;
+    if (offset === state.lastLoadRequestedOffset) {
+      return;
+    }
+
+    state.loadingMore = true;
+    state.lastLoadRequestedOffset = offset;
+    loadMoreIndicator.hidden = false;
+
+    vscode.postMessage({
+      type: 'loadMoreRows',
+      offset,
+    });
+  }
+
+  function maybeRequestMoreRows() {
+    if (!tableContainer || !state.result || !state.result.hasMore || state.loadingMore) {
+      return;
+    }
+
+    const remaining = tableContainer.scrollHeight - (tableContainer.scrollTop + tableContainer.clientHeight);
+    if (remaining <= 120) {
+      requestMoreRows();
+    }
+  }
+
   function renderResults(result) {
+    const previousRowCount = state.result?.rows?.length || 0;
     state.result = result;
+    if (result.rows.length > previousRowCount) {
+      state.loadingMore = false;
+    }
+
     summaryRowCount.textContent = result.rowCount.toLocaleString();
     summaryExecutionTime.textContent = result.executionTimeMs + 'ms';
     summaryColumnCount.textContent = result.columns.length.toLocaleString();
@@ -282,10 +287,12 @@
     if (result.hasMore) {
       warningBanner.hidden = false;
       warningBanner.innerHTML =
-        'Result set was truncated at ' + result.rowCount.toLocaleString() + ' rows. Narrow the query or increase <code>impyla.maxRows</code> if you need more data.';
+        'Showing first ' + result.rowCount.toLocaleString() + ' row(s). Scroll down to load the next batch of 100 rows.';
     } else {
       warningBanner.hidden = true;
       warningBanner.textContent = '';
+      state.loadingMore = false;
+      loadMoreIndicator.hidden = true;
     }
 
     renderedSqlPre.classList.remove('is-wrapped');
@@ -340,6 +347,7 @@
       case 'results':
         showView('results');
         renderResults(nextState.result);
+        maybeRequestMoreRows();
         break;
     }
   }
@@ -367,26 +375,17 @@
       state.sortDirection = 'asc';
     }
 
-    state.currentPage = 1;
     renderTable();
   });
 
-  previousPageButton.addEventListener('click', () => {
-    state.currentPage = Math.max(1, state.currentPage - 1);
-    renderTable();
-  });
-
-  nextPageButton.addEventListener('click', () => {
-    state.currentPage += 1;
-    renderTable();
-  });
+  tableContainer.addEventListener('scroll', maybeRequestMoreRows);
 
   copyPageButton.addEventListener('click', () => {
-    const page = getPageSlice(getProcessedRows());
+    const rows = getProcessedRows();
     vscode.postMessage({
       type: 'copyToClipboard',
-      content: serializeDelimited(page.rows, '\t'),
-      label: 'Copied current page as TSV',
+      content: serializeDelimited(rows, '\t'),
+      label: 'Copied loaded rows as TSV',
     });
   });
 

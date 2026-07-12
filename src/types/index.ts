@@ -28,6 +28,7 @@ export interface JinjaConfig {
 export interface ExtensionConfig {
   max_rows?: number;
   auto_preview?: boolean;
+  session_idle_timeout_seconds?: number;
 }
 
 export interface JinjaRenderRequest {
@@ -50,6 +51,8 @@ export interface QueryExecutionRequest {
   connection: ConnectionConfig;
   sql: string;
   max_rows: number;
+  page_size?: number;
+  offset?: number;
 }
 
 export interface QueryExecutionResponse {
@@ -59,6 +62,7 @@ export interface QueryExecutionResponse {
   row_count?: number;
   execution_time_ms?: number;
   has_more?: boolean;
+  session_id?: string | null;
   error?: string;
   error_type?: "ConnectionError" | "SQLSyntaxError" | "ImpalaError";
   exception_class?: string;
@@ -71,5 +75,6 @@ export interface QueryResult {
   rowCount: number;
   executionTimeMs: number;
   hasMore: boolean;
+  sessionId?: string | null;
   renderedSql?: string;
 }

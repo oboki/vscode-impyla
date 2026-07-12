@@ -16,6 +16,10 @@ type ResultsPanelMessage =
       content: string;
       format: "csv" | "tsv" | "json";
       defaultFileName: string;
+    }
+  | {
+      type: "loadMoreRows";
+      offset: number;
     };
 
 type ResultsViewState =
@@ -37,6 +41,9 @@ export class ResultsViewProvider implements vscode.WebviewViewProvider {
   private currentState: ResultsViewState = { kind: "welcome" };
   private isWebviewReady = false;
   private pendingReveal = false;
+  private onLoadMoreRows:
+    | ((offset: number) => Promise<void> | void)
+    | undefined;
   private readonly disposables: vscode.Disposable[] = [];
 
   constructor(private readonly extensionPath: string) {}
@@ -98,6 +105,12 @@ export class ResultsViewProvider implements vscode.WebviewViewProvider {
     await this.postStateUpdate();
   }
 
+  public setLoadMoreRowsHandler(
+    handler?: (offset: number) => Promise<void> | void,
+  ): void {
+    this.onLoadMoreRows = handler;
+  }
+
   private async reveal(): Promise<void> {
     if (this.webviewView) {
       this.webviewView.show(true);
@@ -144,6 +157,19 @@ export class ResultsViewProvider implements vscode.WebviewViewProvider {
         message.label || "Copied results to clipboard",
         2500,
       );
+      return;
+    }
+
+    if (message.type === "loadMoreRows") {
+      if (!this.onLoadMoreRows) {
+        return;
+      }
+
+      await this.onLoadMoreRows(message.offset);
+      return;
+    }
+
+    if (message.type !== "exportData") {
       return;
     }
 
@@ -262,18 +288,15 @@ export class ResultsViewProvider implements vscode.WebviewViewProvider {
       <div class="results-meta" id="results-meta" aria-live="polite"></div>
       <div class="empty-state" id="empty-state" hidden>No rows returned.</div>
 
-      <div class="table-container">
+      <div class="table-container" id="results-table-container">
         <table id="results-table">
           <caption class="sr-only">Impyla query results</caption>
           <thead id="results-head"></thead>
           <tbody id="results-body"></tbody>
         </table>
       </div>
-
-      <div class="pagination-bar" aria-label="Results pagination">
-        <button class="action-button secondary" id="previous-page-button" type="button">Previous</button>
-        <span class="pagination-status" id="pagination-status">Page 1 of 1</span>
-        <button class="action-button secondary" id="next-page-button" type="button">Next</button>
+      <div class="load-more-indicator" id="load-more-indicator" aria-live="polite" hidden>
+        Loading more rows...
       </div>
     </section>
   </section>

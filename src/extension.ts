@@ -275,6 +275,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Add ConfigService to subscriptions for disposal
   context.subscriptions.push(configService);
+  context.subscriptions.push(impalaService);
 
   outputChannel.appendLine("Impyla extension activated successfully");
 }

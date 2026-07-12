@@ -6,6 +6,10 @@ import { PythonEnvironmentService } from "../services/pythonEnvironmentService";
 import { ResultsViewProvider } from "../panels/resultsPanel";
 
 const GLOBAL_PASSWORD_POINTER = "secret://global";
+const LAZY_LOAD_PAGE_SIZE = 100;
+const DEFAULT_LAZY_SESSION_IDLE_TIMEOUT_SECONDS = 120;
+
+let currentLazySessionId: string | undefined;
 
 /**
  * Command to execute SQL query
@@ -18,6 +22,13 @@ export async function executeQueryCommand(
   resultsViewProvider: ResultsViewProvider,
   outputChannel: vscode.OutputChannel,
 ): Promise<void> {
+  if (currentLazySessionId) {
+    await impalaService.closeSession(currentLazySessionId);
+    currentLazySessionId = undefined;
+  }
+
+  resultsViewProvider.setLoadMoreRowsHandler(undefined);
+
   // Validation
   if (!configService.isConfigLoaded()) {
     const answer = await vscode.window.showErrorMessage(
@@ -112,6 +123,14 @@ export async function executeQueryCommand(
 
   await resultsViewProvider.showLoading("Executing query...");
 
+  const idleTimeoutSeconds =
+    configService.getConfig()?.extension?.session_idle_timeout_seconds ||
+    DEFAULT_LAZY_SESSION_IDLE_TIMEOUT_SECONDS;
+
+  const supportsLazyPaging = /^(select|with|show|describe|desc|explain|values)\b/i.test(
+    processedSql.trim(),
+  );
+
   // Execute query with cancellation support
   const result = await vscode.window.withProgress(
     {
@@ -120,7 +139,16 @@ export async function executeQueryCommand(
       cancellable: true,
     },
     async (progress, token) => {
-      return await impalaService.executeQuery(processedSql, token);
+      return await impalaService.executeQuery(
+        processedSql,
+        token,
+        supportsLazyPaging
+          ? {
+              pageSize: LAZY_LOAD_PAGE_SIZE,
+              idleTimeoutSeconds,
+            }
+          : undefined,
+      );
     },
   );
 
@@ -130,11 +158,73 @@ export async function executeQueryCommand(
     if (renderedSql) {
       queryResult.renderedSql = renderedSql;
     }
+
+    currentLazySessionId = queryResult.sessionId || undefined;
+
     await resultsViewProvider.showResults(queryResult);
+    if (supportsLazyPaging) {
+      let loadingMore = false;
+      resultsViewProvider.setLoadMoreRowsHandler(async (offset) => {
+        if (loadingMore || !queryResult.hasMore || !currentLazySessionId) {
+          return;
+        }
+
+        if (offset !== queryResult.rows.length) {
+          return;
+        }
+
+        loadingMore = true;
+        try {
+          const nextPage = await impalaService.fetchNextPage(
+            currentLazySessionId,
+            LAZY_LOAD_PAGE_SIZE,
+          );
+
+          if (!nextPage.success) {
+            outputChannel.appendLine(
+              `Failed to load next page at offset ${offset}: ${nextPage.error}`,
+            );
+            vscode.window.showErrorMessage(
+              `Failed to load next result page: ${nextPage.error}`,
+            );
+            queryResult.hasMore = false;
+            currentLazySessionId = undefined;
+            await resultsViewProvider.showResults(queryResult);
+            return;
+          }
+
+          if (
+            nextPage.result.columns.join("|") !== queryResult.columns.join("|")
+          ) {
+            vscode.window.showErrorMessage(
+              "Result schema changed while loading next page. Stopping lazy load.",
+            );
+            queryResult.hasMore = false;
+            await resultsViewProvider.showResults(queryResult);
+            return;
+          }
+
+          queryResult.rows.push(...nextPage.result.rows);
+          queryResult.rowCount = queryResult.rows.length;
+          queryResult.hasMore = nextPage.result.hasMore;
+          currentLazySessionId = nextPage.result.sessionId || undefined;
+          await resultsViewProvider.showResults(queryResult);
+        } finally {
+          loadingMore = false;
+        }
+      });
+    }
+
     vscode.window.showInformationMessage(
       `Query executed successfully: ${queryResult.rowCount} rows in ${queryResult.executionTimeMs}ms`,
     );
   } else {
+    if (currentLazySessionId) {
+      await impalaService.closeSession(currentLazySessionId);
+      currentLazySessionId = undefined;
+    }
+
+    resultsViewProvider.setLoadMoreRowsHandler(undefined);
     await resultsViewProvider.showError(result.error, result.errorType);
 
     const configuredPassword = configService.getConfig()?.connection.password;

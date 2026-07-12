@@ -176,6 +176,8 @@ export class ConfigService {
       config.extension.auto_preview !== undefined
         ? config.extension.auto_preview
         : true;
+    config.extension.session_idle_timeout_seconds =
+      config.extension.session_idle_timeout_seconds || 120;
 
     return true;
   }
