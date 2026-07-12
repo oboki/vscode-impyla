@@ -60,10 +60,20 @@ export interface QueryExecutionResponse {
   execution_time_ms?: number;
   has_more?: boolean;
   session_id?: string | null;
+  server_info?: QueryServerInfo;
   error?: string;
   error_type?: "ConnectionError" | "SQLSyntaxError" | "ImpalaError";
   exception_class?: string;
   is_auth_failure?: boolean;
+}
+
+export interface QueryServerInfo {
+  host: string;
+  port: number;
+  database: string;
+  auth_mechanism: string;
+  use_ssl: boolean;
+  idle_timeout_seconds: number;
 }
 
 export interface QueryResult {
@@ -73,5 +83,6 @@ export interface QueryResult {
   executionTimeMs: number;
   hasMore: boolean;
   sessionId?: string | null;
+  serverInfo?: QueryServerInfo;
   renderedSql?: string;
 }

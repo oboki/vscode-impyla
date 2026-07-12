@@ -8,6 +8,7 @@ import {
   ConnectionConfig,
   QueryExecutionResponse,
   QueryResult,
+  QueryServerInfo,
 } from "../types";
 import { PythonEnvironmentService } from "./pythonEnvironmentService";
 import { ConfigService } from "./configService";
@@ -45,6 +46,7 @@ type ServerResponse = {
   execution_time_ms?: number;
   has_more?: boolean;
   session_id?: string | null;
+  server_info?: QueryServerInfo;
   error?: string;
   error_type?: "ConnectionError" | "SQLSyntaxError" | "ImpalaError";
   is_auth_failure?: boolean;
@@ -333,6 +335,7 @@ export class ImpalaService implements vscode.Disposable {
         executionTimeMs: response.execution_time_ms || 0,
         hasMore: response.has_more || false,
         sessionId: response.session_id,
+        serverInfo: response.server_info,
       };
 
       this.outputChannel.appendLine(

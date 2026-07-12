@@ -176,6 +176,15 @@ def handle_execute(
         if connection_config.get("ca_cert"):
             conn_params["ca_cert"] = connection_config["ca_cert"]
 
+        server_info = {
+            "host": connection_config["host"],
+            "port": connection_config["port"],
+            "database": connection_config.get("database", "default"),
+            "auth_mechanism": connection_config.get("auth_mechanism", "NOSASL"),
+            "use_ssl": bool(connection_config.get("use_ssl", False)),
+            "idle_timeout_seconds": max(10, idle_timeout_seconds),
+        }
+
         conn = connect(**conn_params)
         cursor = conn.cursor()
         cursor.execute(sql)
@@ -201,6 +210,7 @@ def handle_execute(
                     "execution_time_ms": execution_time_ms,
                     "has_more": False,
                     "session_id": None,
+                    "server_info": server_info,
                 },
             )
 
@@ -219,6 +229,7 @@ def handle_execute(
                 "conn": conn,
                 "cursor": cursor,
                 "columns": columns,
+                "server_info": server_info,
                 "last_access": time.time(),
                 "idle_timeout_seconds": max(10, idle_timeout_seconds),
             }
@@ -241,6 +252,7 @@ def handle_execute(
                 "execution_time_ms": execution_time_ms,
                 "has_more": has_more,
                 "session_id": session_id,
+                "server_info": server_info,
             },
         )
 
@@ -322,6 +334,7 @@ def handle_fetch(
                 "execution_time_ms": execution_time_ms,
                 "has_more": has_more,
                 "session_id": str(session_id) if has_more else None,
+                "server_info": session.get("server_info"),
             },
         )
     except Exception as error:
