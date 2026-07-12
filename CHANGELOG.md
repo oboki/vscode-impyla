@@ -3,8 +3,20 @@
 All notable changes to the "Impyla" extension will be documented in this file.
 
 ## [Unreleased]
+
 ### Changed
 
+- None yet.
+
+## [0.2.0] - 2026-07-12
+### Changed
+
+- Added persistent query session paging with lazy loading and session idle timeout handling.
+- Added `Impyla: Preview Rendered SQL` command for render-only preview in the results panel.
+- Simplified query panel UX for table-first workflow and removed unnecessary controls.
+- Separated execution and rendering flows: Run Query focuses on results, Preview Rendered SQL focuses on rendered SQL.
+- Improved output diagnostics with run-scoped sections and optional server metadata logging.
+- Removed deprecated `max_rows` usage from config/runtime/docs in favor of session-based paging.
 - Standardized credential environment variable examples from `IMPALA_PASSWORD` to `IMPYLA_PASSWORD` (and `IMPYLA_USER`) across docs and setup wizard placeholders.
 - Clarified environment variable refresh behavior in documentation: VS Code window reload is required after external environment changes.
 
