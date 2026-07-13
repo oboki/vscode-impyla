@@ -10,6 +10,14 @@ const LAZY_LOAD_PAGE_SIZE = 100;
 const DEFAULT_LAZY_SESSION_IDLE_TIMEOUT_SECONDS = 120;
 
 let currentLazySessionId: string | undefined;
+let lazySessionIdleTimer: NodeJS.Timeout | undefined;
+
+function clearLazySessionIdleTimer(): void {
+  if (lazySessionIdleTimer) {
+    clearTimeout(lazySessionIdleTimer);
+    lazySessionIdleTimer = undefined;
+  }
+}
 
 /**
  * Command to execute SQL query
@@ -30,14 +38,29 @@ export async function executeQueryCommand(
   const logSection = (title: string): void => {
     outputChannel.appendLine(`[${runTag}] ===== ${title} =====`);
   };
+  const clearLoadMoreHandler = (): void => {
+    resultsViewProvider.setLoadMoreRowsHandler(undefined);
+  };
+  const clearPanelActionHandlers = (): void => {
+    resultsViewProvider.setCancelQueryHandler(undefined);
+    resultsViewProvider.setCloseSessionHandler(undefined);
+  };
+  const closeCurrentLazySessionIfAny = async (logMessage: string): Promise<void> => {
+    clearLazySessionIdleTimer();
+    if (!currentLazySessionId) {
+      return;
+    }
 
-  if (currentLazySessionId) {
-    log(`Closing previous lazy session: ${currentLazySessionId}`);
+    log(logMessage);
     await impalaService.closeSession(currentLazySessionId);
     currentLazySessionId = undefined;
-  }
+  };
 
-  resultsViewProvider.setLoadMoreRowsHandler(undefined);
+  await closeCurrentLazySessionIfAny(
+    `Closing previous lazy session: ${currentLazySessionId}`,
+  );
+  clearLoadMoreHandler();
+  clearPanelActionHandlers();
 
   // Validation
   if (!configService.isConfigLoaded()) {
@@ -76,7 +99,7 @@ export async function executeQueryCommand(
 
   logSection("Run Start");
   log(`Started at: ${new Date(runStartedAt).toISOString()}`);
-  
+
   if (hasSelection) {
     sqlContent = editor.document.getText(editor.selection);
     const startLine = editor.selection.start.line + 1;
@@ -160,6 +183,19 @@ export async function executeQueryCommand(
   );
 
   // Execute query with cancellation support
+  let panelCancellationRequested = false;
+  let executionInProgress = true;
+  resultsViewProvider.setCancelQueryHandler(async () => {
+    if (!executionInProgress) {
+      return;
+    }
+
+    panelCancellationRequested = true;
+    log("Cancel requested from results panel while query execution is in progress");
+    await resultsViewProvider.showLoading("Cancelling query...");
+    await impalaService.cancelActiveRequests();
+  });
+
   const result = await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
@@ -179,10 +215,66 @@ export async function executeQueryCommand(
       );
     },
   );
+  executionInProgress = false;
+  resultsViewProvider.setCancelQueryHandler(undefined);
 
   // Handle results
   if (result.success) {
     const queryResult = result.result;
+    const syncCloseSessionAction = (): void => {
+      if (!queryResult.hasMore || !currentLazySessionId) {
+        resultsViewProvider.setCloseSessionHandler(undefined);
+        return;
+      }
+
+      resultsViewProvider.setCloseSessionHandler(async () => {
+        if (!currentLazySessionId || !queryResult.hasMore) {
+          return;
+        }
+
+        const closingSessionId = currentLazySessionId;
+        log(`Closing lazy session from results panel: ${closingSessionId}`);
+        clearLazySessionIdleTimer();
+        await impalaService.closeSession(closingSessionId);
+        await stopLazyPaging();
+        vscode.window.showInformationMessage(
+          `Session ${closingSessionId} was closed by user request.`,
+        );
+      });
+    };
+
+    const stopLazyPaging = async (): Promise<void> => {
+      queryResult.hasMore = false;
+      currentLazySessionId = undefined;
+      clearLazySessionIdleTimer();
+      clearLoadMoreHandler();
+      resultsViewProvider.setCloseSessionHandler(undefined);
+      await resultsViewProvider.showResults(queryResult);
+    };
+
+    const armLazySessionIdleTimer = (reason: string): void => {
+      clearLazySessionIdleTimer();
+
+      if (!queryResult.hasMore || !currentLazySessionId) {
+        return;
+      }
+
+      const trackedSessionId = currentLazySessionId;
+      const timeoutMs = Math.max(1, idleTimeoutSeconds) * 1000;
+      lazySessionIdleTimer = setTimeout(() => {
+        void (async () => {
+          if (currentLazySessionId !== trackedSessionId) {
+            return;
+          }
+
+          log(
+            `Closing idle lazy session after ${idleTimeoutSeconds}s without paging (session=${trackedSessionId}, reason=${reason})`,
+          );
+          await impalaService.closeSession(trackedSessionId);
+          await stopLazyPaging();
+        })();
+      }, timeoutMs);
+    };
 
     currentLazySessionId = queryResult.sessionId || undefined;
     logSection("Result");
@@ -204,6 +296,8 @@ export async function executeQueryCommand(
     }
 
     await resultsViewProvider.showResults(queryResult);
+    syncCloseSessionAction();
+    armLazySessionIdleTimer("first-page");
     if (supportsLazyPaging) {
       let loadingMore = false;
       resultsViewProvider.setLoadMoreRowsHandler(async (offset) => {
@@ -219,6 +313,7 @@ export async function executeQueryCommand(
         }
 
         loadingMore = true;
+        clearLazySessionIdleTimer();
         log(`Fetching next page from session=${currentLazySessionId} offset=${offset}`);
         try {
           const nextPage = await impalaService.fetchNextPage(
@@ -231,9 +326,7 @@ export async function executeQueryCommand(
             vscode.window.showErrorMessage(
               `Failed to load next result page: ${nextPage.error}`,
             );
-            queryResult.hasMore = false;
-            currentLazySessionId = undefined;
-            await resultsViewProvider.showResults(queryResult);
+            await stopLazyPaging();
             return;
           }
 
@@ -243,8 +336,7 @@ export async function executeQueryCommand(
             vscode.window.showErrorMessage(
               "Result schema changed while loading next page. Stopping lazy load.",
             );
-            queryResult.hasMore = false;
-            await resultsViewProvider.showResults(queryResult);
+            await stopLazyPaging();
             return;
           }
 
@@ -252,6 +344,7 @@ export async function executeQueryCommand(
           queryResult.rowCount = queryResult.rows.length;
           queryResult.hasMore = nextPage.result.hasMore;
           currentLazySessionId = nextPage.result.sessionId || undefined;
+          syncCloseSessionAction();
           log(
             `Next page merged: +${nextPage.result.rows.length} rows, total=${queryResult.rowCount}, hasMore=${queryResult.hasMore}, session=${currentLazySessionId || "none"}`,
           );
@@ -265,6 +358,7 @@ export async function executeQueryCommand(
             }
           }
           await resultsViewProvider.showResults(queryResult);
+          armLazySessionIdleTimer("next-page");
         } finally {
           loadingMore = false;
         }
@@ -278,13 +372,20 @@ export async function executeQueryCommand(
       `Query executed successfully: ${queryResult.rowCount} rows in ${queryResult.executionTimeMs}ms`,
     );
   } else {
-    if (currentLazySessionId) {
-      log(`Closing session due to failure: ${currentLazySessionId}`);
-      await impalaService.closeSession(currentLazySessionId);
-      currentLazySessionId = undefined;
+    await closeCurrentLazySessionIfAny(
+      `Closing session due to failure: ${currentLazySessionId}`,
+    );
+    clearLoadMoreHandler();
+    clearPanelActionHandlers();
+
+    if (panelCancellationRequested) {
+      await resultsViewProvider.showError("Query execution cancelled by user");
+      logSection("Summary");
+      log(`Query cancelled after ${Date.now() - runStartedAt}ms`);
+      vscode.window.showInformationMessage("Query execution cancelled");
+      return;
     }
 
-    resultsViewProvider.setLoadMoreRowsHandler(undefined);
     await resultsViewProvider.showError(result.error, result.errorType);
     logSection("Summary");
     log(`Query failed after ${Date.now() - runStartedAt}ms: ${result.error}`);

@@ -6,7 +6,6 @@ import {
 import * as path from "path";
 import {
   ConnectionConfig,
-  QueryExecutionResponse,
   QueryResult,
   QueryServerInfo,
 } from "../types";
@@ -15,6 +14,7 @@ import { ConfigService } from "./configService";
 import { GLOBAL_PASSWORD_SECRET_KEY } from "../commands/manageGlobalPassword";
 
 const GLOBAL_PASSWORD_POINTER = "secret://global";
+const DEFAULT_REQUEST_TIMEOUT_SECONDS = 300;
 
 type ServerRequest =
   | {
@@ -55,6 +55,7 @@ type ServerResponse = {
 type PendingRequest = {
   resolve: (response: ServerResponse) => void;
   reject: (error: Error) => void;
+  timeoutHandle?: NodeJS.Timeout;
 };
 
 /**
@@ -124,13 +125,17 @@ export class ImpalaService implements vscode.Disposable {
     }
 
     try {
-      const response = await this.sendServerRequest(pythonPath, {
-        action: "execute",
-        connection: resolvedConnection.connection,
-        sql,
-        page_size: paging?.pageSize,
-        idle_timeout_seconds: paging?.idleTimeoutSeconds,
-      });
+      const response = await this.sendServerRequest(
+        pythonPath,
+        {
+          action: "execute",
+          connection: resolvedConnection.connection,
+          sql,
+          page_size: paging?.pageSize,
+          idle_timeout_seconds: paging?.idleTimeoutSeconds,
+        },
+        resolvedConnection.connection.timeout,
+      );
 
       return this.toServiceResult(response);
     } catch (error) {
@@ -164,11 +169,15 @@ export class ImpalaService implements vscode.Disposable {
     }
 
     try {
-      const response = await this.sendServerRequest(pythonPath, {
-        action: "fetch",
-        session_id: sessionId,
-        page_size: pageSize,
-      });
+      const response = await this.sendServerRequest(
+        pythonPath,
+        {
+          action: "fetch",
+          session_id: sessionId,
+          page_size: pageSize,
+        },
+        this.configService.getConfig()?.connection.timeout,
+      );
 
       return this.toServiceResult(response);
     } catch (error) {
@@ -200,11 +209,15 @@ export class ImpalaService implements vscode.Disposable {
     }
   }
 
+  async cancelActiveRequests(): Promise<void> {
+    await this.stopSessionServer("Query execution cancelled by user");
+  }
+
   dispose(): void {
     void this.stopSessionServer();
   }
 
-  private async stopSessionServer(): Promise<void> {
+  private async stopSessionServer(reason = "Query session server stopped"): Promise<void> {
     if (!this.sessionServerProcess) {
       return;
     }
@@ -222,10 +235,7 @@ export class ImpalaService implements vscode.Disposable {
 
     process.kill();
 
-    for (const [, pending] of this.pendingRequests) {
-      pending.reject(new Error("Query session server stopped"));
-    }
-    this.pendingRequests.clear();
+    this.rejectAllPendingRequests(reason);
   }
 
   private async ensureSessionServer(
@@ -261,6 +271,7 @@ export class ImpalaService implements vscode.Disposable {
             continue;
           }
           this.pendingRequests.delete(response.id);
+          this.clearPendingTimeout(pending);
           pending.resolve(response);
         } catch (error) {
           this.outputChannel.appendLine(
@@ -284,10 +295,7 @@ export class ImpalaService implements vscode.Disposable {
         this.sessionServerProcess = null;
       }
 
-      for (const [, pending] of this.pendingRequests) {
-        pending.reject(new Error("Query session server exited"));
-      }
-      this.pendingRequests.clear();
+      this.rejectAllPendingRequests("Query session server exited");
     });
 
     process.on("error", (error) => {
@@ -301,20 +309,65 @@ export class ImpalaService implements vscode.Disposable {
   private async sendServerRequest(
     pythonPath: string,
     payload: ServerRequest,
+    timeoutSeconds?: number,
   ): Promise<ServerResponse> {
     const process = await this.ensureSessionServer(pythonPath);
     const id = ++this.requestId;
+    const timeoutMs = this.toRequestTimeoutMs(timeoutSeconds);
 
     return await new Promise<ServerResponse>((resolve, reject) => {
-      this.pendingRequests.set(id, { resolve, reject });
+      const pending: PendingRequest = { resolve, reject };
+
+      pending.timeoutHandle = setTimeout(() => {
+        const existing = this.pendingRequests.get(id);
+        if (!existing) {
+          return;
+        }
+
+        this.pendingRequests.delete(id);
+        this.clearPendingTimeout(existing);
+        existing.reject(
+          new Error(`Request timed out after ${Math.ceil(timeoutMs / 1000)}s`),
+        );
+
+        this.outputChannel.appendLine(
+          `Session server request ${id} timed out; restarting session server process`,
+        );
+        void this.stopSessionServer("Query session server stopped after request timeout");
+      }, timeoutMs);
+
+      this.pendingRequests.set(id, pending);
 
       try {
         process.stdin.write(`${JSON.stringify({ id, ...payload })}\n`);
       } catch (error) {
+        const existing = this.pendingRequests.get(id);
+        this.clearPendingTimeout(existing);
         this.pendingRequests.delete(id);
         reject(error as Error);
       }
     });
+  }
+
+  private toRequestTimeoutMs(timeoutSeconds?: number): number {
+    return (
+      Math.max(1, timeoutSeconds || DEFAULT_REQUEST_TIMEOUT_SECONDS) * 1000
+    );
+  }
+
+  private clearPendingTimeout(pending?: PendingRequest): void {
+    if (pending?.timeoutHandle) {
+      clearTimeout(pending.timeoutHandle);
+      pending.timeoutHandle = undefined;
+    }
+  }
+
+  private rejectAllPendingRequests(reason: string): void {
+    for (const [, pending] of this.pendingRequests) {
+      this.clearPendingTimeout(pending);
+      pending.reject(new Error(reason));
+    }
+    this.pendingRequests.clear();
   }
 
   private toServiceResult(
@@ -364,7 +417,12 @@ export class ImpalaService implements vscode.Disposable {
     connection: ConnectionConfig,
   ): Promise<
     | { success: true; connection: ConnectionConfig }
-    | { success: false; error: string; errorType?: string; isAuthFailure?: boolean }
+    | {
+        success: false;
+        error: string;
+        errorType?: string;
+        isAuthFailure?: boolean;
+      }
   > {
     if (connection.password !== GLOBAL_PASSWORD_POINTER) {
       return { success: true, connection };

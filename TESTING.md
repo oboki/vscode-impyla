@@ -120,6 +120,13 @@ Use this checklist to verify all extension functionality works correctly.
 - [ ] "Query execution cancelled" message shown
 - [ ] No error popup
 
+### Results Panel Controls
+- [ ] Execute a long-running query and verify `Cancel query` button appears in loading view
+- [ ] Click `Cancel query` and verify execution stops promptly
+- [ ] Execute a query with `hasMore=true` and verify `Stop paging session` button appears
+- [ ] Click `Stop paging session` and verify loaded rows remain but paging stops
+- [ ] Confirmation message includes the closed session ID
+
 ### Large Result Set
 - [ ] Execute query returning many rows (e.g., > 300)
 - [ ] Initial batch loads quickly (first 100 rows)
@@ -213,7 +220,15 @@ Use this checklist to verify all extension functionality works correctly.
 - [ ] Set `extension.session_idle_timeout_seconds` to a small value (e.g., 10)
 - [ ] Execute query with multiple lazy-load batches
 - [ ] Wait longer than timeout without loading more rows
-- [ ] Next lazy-load request returns session expired guidance
+- [ ] Lazy loading is automatically stopped after the idle window
+- [ ] No additional page request is sent for the previous session after timeout
+
+### Slow Query / Request Timeout Setting
+- [ ] Set `connection.timeout` to a small value (e.g., 3)
+- [ ] Execute a deliberately long-running query
+- [ ] Query fails within expected timeout window
+- [ ] Error indicates request timeout and does not hang indefinitely
+- [ ] Repeat with lazy paging query and verify next-page fetch also respects timeout
 
 ### pythonPath Setting
 - [ ] Set custom python path

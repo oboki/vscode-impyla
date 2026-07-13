@@ -8,6 +8,16 @@ All notable changes to the "Impyla" extension will be documented in this file.
 
 - None yet.
 
+## [0.3.0] - 2026-07-13
+
+### Changed
+
+- Added client request timeout handling for both initial query execution and lazy page fetch using `connection.timeout`.
+- Added client-side lazy-session idle cleanup so sessions are closed when paging remains idle past `extension.session_idle_timeout_seconds`.
+- Added results-panel action controls to cancel an in-flight query and stop an active paging session.
+- Refactored query execution/session management paths for clearer timeout and cleanup flow.
+- Updated README, QUICKSTART, and TESTING docs to align timeout semantics and expected paging behavior.
+
 ## [0.2.0] - 2026-07-12
 ### Changed
 

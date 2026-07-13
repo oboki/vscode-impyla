@@ -20,7 +20,18 @@ type ResultsPanelMessage =
   | {
       type: "loadMoreRows";
       offset: number;
+    }
+  | {
+      type: "cancelQuery";
+    }
+  | {
+      type: "closeSession";
     };
+
+type ResultsPanelControls = {
+  canCancelQuery: boolean;
+  canCloseSession: boolean;
+};
 
 type ResultsViewState =
   | { kind: "welcome" }
@@ -31,6 +42,7 @@ type ResultsViewState =
 type ResultsViewUpdateMessage = {
   type: "updateState";
   state: ResultsViewState;
+  controls: ResultsPanelControls;
 };
 
 export class ResultsViewProvider implements vscode.WebviewViewProvider {
@@ -44,6 +56,12 @@ export class ResultsViewProvider implements vscode.WebviewViewProvider {
   private onLoadMoreRows:
     | ((offset: number) => Promise<void> | void)
     | undefined;
+  private onCancelQuery: (() => Promise<void> | void) | undefined;
+  private onCloseSession: (() => Promise<void> | void) | undefined;
+  private controls: ResultsPanelControls = {
+    canCancelQuery: false,
+    canCloseSession: false,
+  };
   private readonly disposables: vscode.Disposable[] = [];
 
   constructor(private readonly extensionPath: string) {}
@@ -111,6 +129,18 @@ export class ResultsViewProvider implements vscode.WebviewViewProvider {
     this.onLoadMoreRows = handler;
   }
 
+  public setCancelQueryHandler(handler?: () => Promise<void> | void): void {
+    this.onCancelQuery = handler;
+    this.controls.canCancelQuery = Boolean(handler);
+    void this.postStateUpdate();
+  }
+
+  public setCloseSessionHandler(handler?: () => Promise<void> | void): void {
+    this.onCloseSession = handler;
+    this.controls.canCloseSession = Boolean(handler);
+    void this.postStateUpdate();
+  }
+
   private async reveal(): Promise<void> {
     if (this.webviewView) {
       this.webviewView.show(true);
@@ -135,6 +165,7 @@ export class ResultsViewProvider implements vscode.WebviewViewProvider {
     const message: ResultsViewUpdateMessage = {
       type: "updateState",
       state: this.currentState,
+      controls: this.controls,
     };
 
     await this.webviewView.webview.postMessage(message);
@@ -166,6 +197,24 @@ export class ResultsViewProvider implements vscode.WebviewViewProvider {
       }
 
       await this.onLoadMoreRows(message.offset);
+      return;
+    }
+
+    if (message.type === "cancelQuery") {
+      if (!this.onCancelQuery) {
+        return;
+      }
+
+      await this.onCancelQuery();
+      return;
+    }
+
+    if (message.type === "closeSession") {
+      if (!this.onCloseSession) {
+        return;
+      }
+
+      await this.onCloseSession();
       return;
     }
 
@@ -231,6 +280,9 @@ export class ResultsViewProvider implements vscode.WebviewViewProvider {
     <div class="loading" role="status" aria-live="polite">
       <div class="spinner"></div>
       <p id="loading-message">Executing query...</p>
+      <div class="loading-actions">
+        <button class="action-button secondary" id="cancel-query-button" type="button" hidden>Cancel query</button>
+      </div>
     </div>
   </section>
 
@@ -282,6 +334,7 @@ export class ResultsViewProvider implements vscode.WebviewViewProvider {
           <h2 class="section-title" id="results-title">Query results</h2>
         </div>
         <div class="toolbar-actions">
+          <button class="action-button secondary icon-action-button" id="close-session-button" type="button" title="Stop paging session" aria-label="Stop paging session" hidden>⏹<span class="sr-only">Stop paging session</span></button>
           <button class="action-button secondary icon-action-button" id="copy-page-button" type="button" title="Copy loaded rows" aria-label="Copy loaded rows">⧉<span class="sr-only">Copy loaded rows</span></button>
           <button class="action-button secondary icon-action-button" id="export-csv-button" type="button" title="Export CSV" aria-label="Export CSV">⇩<span class="sr-only">Export CSV</span></button>
           <button class="action-button secondary icon-action-button" id="export-json-button" type="button" title="Export JSON" aria-label="Export JSON">{}<span class="sr-only">Export JSON</span></button>

@@ -9,6 +9,7 @@
   };
 
   const loadingMessage = document.getElementById('loading-message');
+  const cancelQueryButton = document.getElementById('cancel-query-button');
   const errorTypeBadge = document.getElementById('error-type-badge');
   const errorLineBadge = document.getElementById('error-line-badge');
   const errorMessage = document.getElementById('error-message');
@@ -34,6 +35,7 @@
   const copyPageButton = document.getElementById('copy-page-button');
   const exportCsvButton = document.getElementById('export-csv-button');
   const exportJsonButton = document.getElementById('export-json-button');
+  const closeSessionButton = document.getElementById('close-session-button');
 
   const state = {
     sortColumn: -1,
@@ -41,7 +43,21 @@
     result: null,
     loadingMore: false,
     lastLoadRequestedOffset: -1,
+    controls: {
+      canCancelQuery: false,
+      canCloseSession: false,
+    },
   };
+
+  function syncActionControls() {
+    cancelQueryButton.hidden = !state.controls.canCancelQuery;
+    cancelQueryButton.disabled = !state.controls.canCancelQuery;
+
+    const canCloseCurrentSession =
+      state.controls.canCloseSession && Boolean(state.result?.hasMore);
+    closeSessionButton.hidden = !canCloseCurrentSession;
+    closeSessionButton.disabled = !canCloseCurrentSession;
+  }
 
   function showView(kind) {
     views.welcome.hidden = kind !== 'welcome';
@@ -64,7 +80,9 @@
     state.result = null;
     state.loadingMore = false;
     state.lastLoadRequestedOffset = -1;
+    state.controls.canCloseSession = false;
     loadMoreIndicator.hidden = true;
+    syncActionControls();
   }
 
   function compareValues(left, right) {
@@ -292,6 +310,8 @@
       loadMoreIndicator.hidden = true;
     }
 
+    syncActionControls();
+
     renderedSqlPre.classList.remove('is-wrapped');
     toggleWrapButton.innerHTML = '↩<span class="sr-only">Enable line wrap</span>';
     toggleWrapButton.title = 'Enable line wrap';
@@ -354,6 +374,14 @@
         maybeRequestMoreRows();
         break;
     }
+  }
+
+  function applyControls(nextControls) {
+    state.controls = {
+      canCancelQuery: Boolean(nextControls?.canCancelQuery),
+      canCloseSession: Boolean(nextControls?.canCloseSession),
+    };
+    syncActionControls();
   }
 
   resultsHead.addEventListener('click', (event) => {
@@ -443,12 +471,29 @@
     toggleWrapButton.setAttribute('aria-pressed', wrapped ? 'true' : 'false');
   });
 
+  cancelQueryButton.addEventListener('click', () => {
+    if (cancelQueryButton.disabled) {
+      return;
+    }
+
+    vscode.postMessage({ type: 'cancelQuery' });
+  });
+
+  closeSessionButton.addEventListener('click', () => {
+    if (closeSessionButton.disabled) {
+      return;
+    }
+
+    vscode.postMessage({ type: 'closeSession' });
+  });
+
   window.addEventListener('message', (event) => {
     const message = event.data;
     if (!message || message.type !== 'updateState') {
       return;
     }
 
+    applyControls(message.controls);
     applyState(message.state);
   });
 

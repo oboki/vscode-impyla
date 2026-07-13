@@ -110,6 +110,7 @@ connection:
   port: 21050
   database: default
   auth_mechanism: NOSASL
+  timeout: 300
 
 jinja:
   plugin_paths: []
@@ -119,6 +120,10 @@ extension:
   auto_preview: true
   session_idle_timeout_seconds: 120
 ```
+
+Timeout notes:
+- `connection.timeout` controls query request timeout for initial execution and next-page fetch.
+- `session_idle_timeout_seconds` controls how long lazy paging sessions remain open while waiting for the next page request.
 
 Config lookup order is:
 1. Workspace `.impyla.yml`

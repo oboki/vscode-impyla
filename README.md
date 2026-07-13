@@ -143,7 +143,7 @@ connection:
   auth_mechanism: string    # NOSASL, PLAIN, LDAP, or KERBEROS
   user: string             # Username (for PLAIN/LDAP)
   password: string         # Plaintext password OR secret://global (for PLAIN/LDAP)
-  timeout: number          # Query timeout in seconds
+  timeout: number          # Request timeout in seconds for execute/fetch (default: 300)
   use_ssl: boolean         # Use SSL connection
   ca_cert: string          # Path to CA certificate
 ```
@@ -187,6 +187,14 @@ Supported mechanisms:
 
 - `impyla.pythonPath` - Python executable path (default: python3)
 
+## Timeout Behavior
+
+- `connection.timeout` (default: `300`) applies to query request waiting time for both initial execution and page fetch.
+- `connection.timeout` is also passed to the Python Impyla connection timeout parameter.
+- `extension.session_idle_timeout_seconds` (default: `120`) controls lazy paging session idle cleanup.
+- After the first page or any subsequent page is loaded, if no next-page request arrives within the idle timeout window, the extension closes the lazy session and stops lazy loading.
+- When the final page is reached (`has_more = false`), the server closes the session immediately.
+
 ## Result Paging
 
 - Query results are fetched in lazy-loaded batches (default batch size: 100 rows)
@@ -197,6 +205,10 @@ Supported mechanisms:
 extension:
   session_idle_timeout_seconds: 120
 ```
+
+- If the idle timeout is exceeded between page loads, lazy loading is stopped and a new query run is required.
+- While a query is running, you can cancel it from the results panel loading view.
+- While additional pages remain, you can manually stop the current paging session from the results panel.
 
 ## Troubleshooting
 
