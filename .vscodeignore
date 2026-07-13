@@ -27,7 +27,9 @@ TESTING.md
 
 # Local/dev files
 .impyla.yml
+.local-impala-quickstart/**
 examples/**
+test.sql
 *.vsix
 
 # Stale/unused build output
